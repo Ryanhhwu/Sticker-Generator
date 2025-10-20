@@ -1,0 +1,7 @@
+{
+  "name": "LINE Sticker Pack Generator",
+  "description": "An AI-powered web application that guides users through a four-step wizard to create custom LINE sticker packs. Users can upload character reference images, choose from various art styles, generate sticker ideas, and export a ready-to-upload ZIP file.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
