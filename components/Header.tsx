@@ -46,27 +46,32 @@ const Header: React.FC<HeaderProps> = ({
     }, [slogans.length]);
 
     return (
-        <header className="mb-8 sm:mb-12 w-full text-center relative">
+        <header className="mb-8 sm:mb-12 w-full text-center sm:relative">
+            {/* Buttons container: a flex row on mobile, becomes an absolute overlay on sm+ */}
+            <div className="flex justify-between items-center mb-4 sm:mb-0 sm:absolute sm:inset-0 sm:pointer-events-none">
+                <div className="sm:absolute sm:top-0 sm:left-4 sm:left-6 sm:pointer-events-auto">
+                    {currentView === 'upload_style' ? (
+                        <button onClick={handleLanguageToggle} title={t('langToggle')} className="p-2 rounded-full transition-colors" style={{ color: 'var(--text-muted-color)', backgroundColor: 'var(--btn-secondary-bg)' }}>
+                            <GlobeIcon />
+                        </button>
+                    ) : (
+                        // Placeholder to maintain layout on mobile when lang button is hidden
+                        <div className="w-10 h-10 sm:hidden" />
+                    )}
+                </div>
+                <div className="sm:absolute sm:top-0 sm:right-4 sm:right-6 sm:pointer-events-auto">
+                    <button onClick={handleThemeToggle} title={theme === 'dark' ? t('themeToggleLight') : t('themeToggleDark')} className="p-2 rounded-full transition-colors" style={{ color: 'var(--text-muted-color)', backgroundColor: 'var(--btn-secondary-bg)' }}>
+                        {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+                    </button>
+                </div>
+            </div>
+
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-black bg-clip-text text-transparent bg-gradient-to-b" style={{ color: 'transparent', backgroundImage: 'linear-gradient(to bottom, var(--header-text-from), var(--header-text-to))' }}>
                 <strong className="text-green-500">LINE</strong> {t('appTitle')}
             </h1>
             <p className="mt-4 text-lg sm:text-xl h-7" style={{ color: 'var(--text-muted-color)', transition: 'opacity 0.5s ease-in-out', opacity: sloganOpacity }}>
                 {slogans[sloganIndex]}
             </p>
-
-            {currentView === 'upload_style' && (
-                 <div className="absolute top-0 left-4 sm:left-6">
-                    <button onClick={handleLanguageToggle} title={t('langToggle')} className="p-2 rounded-full transition-colors" style={{ color: 'var(--text-muted-color)', backgroundColor: 'var(--btn-secondary-bg)' }}>
-                        <GlobeIcon />
-                    </button>
-                 </div>
-            )}
-           
-            <div className="absolute top-0 right-4 sm:right-6">
-                <button onClick={handleThemeToggle} title={theme === 'dark' ? t('themeToggleLight') : t('themeToggleDark')} className="p-2 rounded-full transition-colors" style={{ color: 'var(--text-muted-color)', backgroundColor: 'var(--btn-secondary-bg)' }}>
-                    {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-                </button>
-            </div>
             
             {error && (
                 <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg max-w-lg mx-auto dark:bg-red-900/50 dark:border-red-700 dark:text-red-200">

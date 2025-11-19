@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 
 interface CameraModalProps {
@@ -77,7 +78,13 @@ const CameraModal: React.FC<CameraModalProps> = ({ t, onClose, onCapture }) => {
                     </div>
                 )}
                 
-                {error && <p className="absolute bottom-2 left-2 right-2 bg-red-800/80 text-white text-center p-2 rounded">{error}</p>}
+                {error && (
+                    <div className="absolute bottom-2 left-2 right-2 bg-red-800/80 text-white text-center p-2 rounded">
+                        {error.split('\n').map((line, i) => (
+                            <p key={i} className="text-sm">{line}</p>
+                        ))}
+                    </div>
+                )}
             </div>
             <div className="mt-6 flex gap-4">
                 <button onClick={onClose} className="btn-secondary px-8 py-3 rounded-lg text-lg">{t('cancel')}</button>

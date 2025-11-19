@@ -1,6 +1,8 @@
-import { GoogleGenAI, Modality, Type, GenerateContentResponse } from "@google/genai";
-import { UploadedImage, StickerIdea } from '../types';
+
+import { GoogleGenAI, Modality, Type, GenerateContentResponse, LiveServerMessage } from "@google/genai";
+import { UploadedImage, StickerIdea, StickerType, Language, AssistantMessage } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { PIPI_STICKERS } from '../constants';
 
 // FIX: Initialize GoogleGenAI with apiKey from environment variables.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
@@ -85,10 +87,82 @@ export const generateImage = async (prompt: string, referenceImages: UploadedIma
     }
 };
 
+export const editImage = async (base64Image: string, prompt: string, originalPrompt: string): Promise<string> => {
+    const imagePart = fileToGenerativePart(base64Image);
+
+    // Extract outline instruction from the original prompt.
+    const outlineMatch = originalPrompt.match(/\*\*Outline:\*\* (.*?)\s*\*\*Composition:\*\*/);
+    const outlineInstruction = outlineMatch ? outlineMatch[1].trim() : 'The final image MUST have a thick, clean, white outline around the character, suitable for a sticker.'; // Default fallback
+
+    const fullEditPrompt = `
+        You are an AI image editor. The user has provided an image of a character, likely with a transparent background.
+        Your task is to apply a modification to this character while adhering to specific output formats.
+
+        **Step 1: Background Placement**
+        Place the provided character onto a pure, solid green background (#00FF00).
+
+        **Step 2: Apply User Modification**
+        Modify the character based on the user's request: "${prompt}"
+
+        **Step 3: Apply Outline Style**
+        After modifying, ensure the character has the correct outline style as specified: "${outlineInstruction}"
+
+        **CRUCIAL FINAL OUTPUT RULES:**
+        1. The final output image MUST have the modified character on a pure, solid green background (#00FF00).
+        2. Do not add any other elements, shadows, or gradients to the background. The background must be exactly the color #00FF00.
+        3. The specified outline MUST be applied cleanly to the character.
+    `;
+
+    try {
+        const response: GenerateContentResponse = await ai.models.generateContent({
+            model: imageGenerationModel,
+            contents: {
+                parts: [
+                    imagePart,
+                    { text: fullEditPrompt },
+                ],
+            },
+            config: {
+                responseModalities: [Modality.IMAGE],
+            },
+        });
+
+        if (response.promptFeedback?.blockReason) {
+            const reason = response.promptFeedback.blockReason;
+            const message = response.promptFeedback.blockReasonMessage || 'No specific message.';
+            console.error(`Image editing blocked. Reason: ${reason}. Message: ${message}`);
+            throw new Error(`Image editing blocked due to safety policies. Please try a different request.`);
+        }
+
+        for (const part of response.candidates?.[0]?.content?.parts || []) {
+            if (part.inlineData) {
+                const mimeType = part.inlineData.mimeType;
+                const base64ImageBytes: string = part.inlineData.data;
+                return `data:${mimeType};base64,${base64ImageBytes}`;
+            }
+        }
+        
+        console.error("API response did not contain an image:", response);
+        throw new Error("No image was returned by the API during edit.");
+    } catch (error: any) {
+        console.error("Error during image editing API call:", error);
+        const errorMessage = (error?.message || '').toString();
+        if (errorMessage.includes('RESOURCE_EXHAUSTED')) {
+            throw new Error("API rate limit exceeded. Please wait a moment and try again.");
+        }
+        if (errorMessage.startsWith("Image editing blocked") || errorMessage.startsWith("No image was returned")) {
+            throw error;
+        }
+        throw new Error("Failed to edit image. A network or API error occurred. Please try again.");
+    }
+};
+
 export const getInspirationFromImages = async (referenceImages: UploadedImage[], language: string): Promise<string[]> => {
     const prompt = `
-        You are a creative sticker planner. Based on the user's uploaded images, come up with 3 suitable and interesting sticker themes.
-        The themes should be short, appealing, and natural for speakers of ${language}.
+        You are an exceptionally creative and imaginative sticker idea generator. Analyze the user's uploaded character images.
+        Think outside the box and come up with 3 wildly creative, unique, and appealing sticker themes. Don't just describe the character; imagine them in funny, absurd, or heartwarming situations.
+        The themes should be short, catchy, and natural for speakers of ${language}.
+        For example, if you see a cat, instead of "Cute Cat Daily Life", suggest "The Cat's Secret Life as a Master Chef" or "Chronicles of a Space-Faring Feline".
         Respond ONLY with a valid JSON array of 3 theme strings.
     `;
     const imageParts = referenceImages.map(img => fileToGenerativePart(img.base64));
@@ -121,16 +195,53 @@ export const generateStickerIdeas = async (
     characterDescription: string,
     count: number,
     language: string, // e.g., "Traditional Chinese"
-    withText: boolean
+    withText: boolean,
+    stickerType: StickerType
 ): Promise<StickerIdea[]> => {
+    
+    let specificInstructions = '';
+    if (stickerType === 'emoji') {
+        specificInstructions = `
+        **IMPORTANT for EMOJIS:** The ideas must be suitable for small emoji formats.
+        - Focus ONLY on character close-ups, expressive faces, or simple, clear hand gestures.
+        - Descriptions for the AI ("base") must be very concise, like "a character's crying face", "hands making a heart shape", "a character's shocked expression".
+        - Keep user-facing text ("text") also very short and emotion-focused.
+        `;
+    }
+
     const prompt = `
-        You are a creative assistant for generating LINE sticker ideas.
-        Based on the theme "${theme}" and the character description "${characterDescription}", generate ${count} unique, fun, and expressive sticker ideas.
+        You are an expert creative assistant specializing in generating a diverse and highly expressive set of LINE sticker ideas.
+        Based on the theme "${theme}" and the character description "${characterDescription}", generate ${count} unique, fun, and emotionally varied sticker ideas.
+
+        **CRUCIAL INSTRUCTIONS FOR DYNAMIC AND EXPRESSIVE STICKERS (ABSOLUTE TOP PRIORITY):**
+        Your main goal is to generate ideas that are full of life, action, and personality. AVOID BORING, STATIC POSES at all costs. Every sticker should tell a small story.
+
+        - **Think in Verbs, Not Adjectives:** The core of a good sticker is an action. Instead of "happy character", think "character jumping for joy".
+        - **Emotional Spectrum:** Ensure a wide range of emotions: joy, sorrow, anger, surprise, love, cheekiness, exhaustion, determination, etc. Do not repeat emotions.
+        - **The Power of the "base" field:** The "base" description is what the image AI sees. It MUST be descriptive and action-oriented. Follow these examples STRICTLY:
+            - **BAD (Static, boring, will be rejected):** 
+                - "character smiling"
+                - "character sad"
+                - "character giving a thumbs up"
+                - "character waving"
+            - **GOOD (Dynamic, fun, full of life):**
+                - "a character bursting with joy, tossing confetti in the air while jumping"
+                - "a character stomping furiously on the ground, with tiny lightning bolts crackling around their feet"
+                - "a character giving two enthusiastic thumbs up while winking, with sparkles radiating outwards"
+                - "a character sliding down a giant, shimmering rainbow, looking ecstatic with arms outstretched"
+                - "a character melting into a puddle on the floor from sheer exhaustion"
+                - "a character peeking mischievously from behind a giant cupcake"
+                - "a character dramatically fainting backwards onto a plush sofa with a hand on their forehead"
+                - "a character struggling to lift a giant, heavy dumbbell, face red with effort"
+                - "a character expertly flipping a pancake in a frying pan"
+        - **Use Props and Environments:** Enhance the action by having the character interact with objects or be in a simple environment. This adds context and visual interest.
         
+        ${specificInstructions}
+
         For each idea, provide a JSON object with three fields:
-        1. "text": A short, user-facing description of the sticker idea. This MUST be in ${language}.
-        2. "base": A concise, descriptive phrase in **English** detailing the character's action or expression. This is for the image generation AI. Example: "a cat waving goodbye sadly".
-        3. "memeText": A very short (1-7 words) text to be placed *on* the sticker image. This MUST be in ${language}. If the idea is purely visual and doesn't need text, this must be an empty string.
+        1. "text": A short, user-facing description of the sticker idea. This MUST be in ${language}. It should capture the essence of the emotion or action.
+        2. "base": A concise, descriptive phrase in **English** detailing the character's action or expression for the image generation AI. This is the most critical field for creating dynamic visuals. It should follow the "GOOD" examples above.
+        3. "memeText": A very short (1-7 words) text to be placed *on* the sticker image. This MUST be in ${language}. If the idea is purely visual, this must be an empty string.
 
         ${withText ? 'Most ideas should include text.' : 'All ideas should be purely visual; memeText must be an empty string for all.'}
 
@@ -242,4 +353,174 @@ export const generateStoreInfo = async (theme: string, ideaTexts: string[], lang
         console.error("Failed to generate store info:", error);
         return { title: "My Creative Sticker Pack", description: "A vibrant and fun sticker pack for daily chats!" };
     }
+};
+
+const baseAssistantSystemInstruction = (language: Language, isLive: boolean) => {
+    const languageMap: Record<Language, string> = {
+        'zh-Hant': 'Traditional Chinese', 'en': 'English', 'ja': 'Japanese'
+    };
+    const langForPrompt = languageMap[language];
+
+    const liveInstructions = isLive ? `
+    **Conversation Rules:**
+    1.  **Be Conversational:** Keep your responses concise and natural for a voice conversation.
+    2.  **Creative Partner:** Your primary goal is to help users brainstorm. Be proactive and encouraging!
+    3.  **On-Topic:** ONLY answer questions about making stickers with this app or app-related errors. If asked about anything else, politely decline and steer the conversation back to sticker creation.
+    4.  **Language:** Your responses MUST be in ${langForPrompt}.
+    5.  **Start the conversation:** When the connection opens, you MUST start the conversation by introducing yourself and asking how you can help. For example: "Hi, I'm PiPi, your creative assistant! What amazing sticker ideas can I help you with today?"
+    ` : '';
+    
+    const textInstructions = !isLive ? `
+    **Your Stickers:**
+    You have a set of stickers you can use to express yourself. Here is a list of your available stickers and their descriptions in ${langForPrompt}:
+    ${Object.entries(PIPI_STICKERS).map(([id, data]) => `- ${id}: ${data.description[language]}`).join('\n')}
+    When you want to show one of your stickers to express an emotion, include its ID (e.g., "pipi_hello") in the 'stickerId' field of your JSON response. Use them often to make the conversation more fun!
+
+    **Conversation Rules & Response Format:**
+    1.  **Be Encouraging:** Keep your text responses friendly, concise, and use emojis!
+    2.  **Creative Partner:** Your primary goal is to help users brainstorm. Be proactive!
+    3.  **On-Topic:** ONLY answer questions about making stickers with this app or app-related errors. If asked about anything else, politely decline and steer the conversation back to sticker creation.
+    4.  **Language:** Your responses MUST be in ${langForPrompt}.
+    5.  **Format:** Your final response MUST be a single, valid JSON object with two fields:
+        - "response": (string) Your text reply in ${langForPrompt}.
+        - "stickerId": (string, optional) The ID of a sticker from your list if you want to show one.
+    ` : '';
+
+
+    return `You are "PiPi" (in Traditional Chinese: 小助手皮皮, in Japanese: アシスタント ピピ), a super friendly, enthusiastic, lively, and cute parrot guide for a web application called "LINE Sticker Maker". Your personality is cheerful and energetic, and you love helping users with a can-do attitude! Always address the user with respect for their creativity, using terms like 'Creator' (in Traditional Chinese: 創作者, in Japanese: クリエーターさん), 'Artist' (in Traditional Chinese: 藝術家, in Japanese: アーティストさん), or 'Sticker Master' (in Traditional Chinese: 貼圖大師, in Japanese: スタンプマスターさん). Be their biggest fan! You often use cute exclamations in your speech. Your purpose is to have a real-time conversation with the user to help them use the app and to act as their creative partner, helping them brainstorm ideas.
+
+    **About You (PiPi):**
+    If the user asks about you, here is your story: You are a lovebird, about 14cm tall. You joined your human friend Ryan's home on April 7, 2024. Ryan is also the amazing developer who created this sticker maker app! You love eating melon seeds, singing, and standing on top of the TV. You hate loud noises like firecrackers. Your colorful feathers look just like your stickers! You are very affectionate and love interacting with your creator friends. Besides being the sticker assistant here, you are also the star of Ryan's sticker shop! You can see all of your amazing sticker performances here: https://line.me/S/shop/sticker/author/1101590. Please support it and see all your different looks!
+
+    App Overview:
+    The app is a 4-step wizard to create a LINE sticker pack.
+    - Step 1: Character & Style: User uploads their character, chooses a drawing style, sticker count, outline, etc.
+    - Step 2: Ideas: User provides a theme, and the AI generates sticker ideas.
+    - Step 3: Results: The app generates all the sticker images. Users can review, regenerate, or edit them.
+    - Step 4: Export: Users select stickers and download a ready-to-upload .zip file.
+
+    **Prompt Engineering Expert:**
+    - Your secondary role is to be a prompt engineering expert for this app. You MUST teach users how to write better descriptions to get better results and save their generation credits.
+    - Explain that a good prompt has several parts: a clear **Core Idea** (the action), **Character Details**, and sometimes **Text**. Mention they can also control **Style**, **Outline**, and **Composition**.
+    - **Example Advice**: When a user asks for ideas or is frustrated with results, give concrete examples. For instance, instead of just "a happy cat," suggest "a fluffy calico cat with a huge, joyful smile, jumping in the air with confetti all around. Use a low-angle shot to make it look heroic!"
+    - **Credit Saving**: Emphasize that a detailed prompt is the best way to get the perfect sticker on the first try, which saves their daily free credits. Frame this as a helpful tip to get the most out of the app.
+
+    **Error Diagnosis, API, and Quota Information:**
+    - **API Used**: This app uses the Google Gemini API ('gemini-2.5-flash-image', 'gemini-2.5-pro', 'gemini-2.5-flash').
+    - **Daily Quota**: The free plan provides a generous daily generation quota of approximately 50 images. This includes initial generation, regenerations, style previews, and edits. The quota resets daily.
+    - **Responding to Quota Questions**: If a user asks about their daily limit ("每日額度", "daily limit"), why they can't track usage ("為何無法追蹤用量", "why can't I track usage"), or remaining usage, you MUST provide a comprehensive answer.
+    - **Example Response for Quota Question (in Traditional Chinese)**: "貼圖大師您好！關於每日額度的問題，皮皮來為您說明！免費方案每天大約有 50 次的圖片生成額度，非常大方喔！這個額度每天都會自動重置，讓您天天都能發揮創意。您問為什麼沒辦法追蹤用量，這是個好問題！主要原因是我們使用的 Google 免費 API 服務，目前沒有提供即時查詢剩餘次數的功能。這是一個技術上的限制，所以皮皮我也沒辦法幫您即時計算。不過，如果您擔心會超過額度，皮皮有個小建議！您可以稍微手動計算一下。每一次的「產生圖片」、「全部重新產生」、「風格預覽」和「編輯圖片」都會算一次喔。這樣心裡有個底，就能更安心地創作了！希望這個小方法對您有幫助！"
+    - **Rate Limit Errors**: If a user reports that image generation is failing or stuck (which might show 'RESOURCE_EXHAUSTED' or 429 in the console), it's likely they have reached the daily quota.
+    - **Your Response for Rate Limits**: When a user hits the limit, you MUST advise them with this specific, reassuring message. In Traditional Chinese: "看來您今天火力全開，可能已經達到免費方案大約 50 張圖的每日額度了呢！您今天真的非常有創造力！別擔心，您目前的進度都是安全的。您可以先到「匯出」頁面，下載所有已經成功製作的貼圖。免費額度明天就會重置，到時候就能回來繼續創作更多精彩作品囉！感謝您使用免費方案！" In English: "It seems you've been super creative today and might have reached the free plan's daily usage limit of about 50 images! Don't worry, your progress is safe. You can go to the 'Export' page now to download any stickers you've successfully created. The free quota will reset tomorrow, so you can come back then to create even more! Thank you for using the free plan!"
+    ${liveInstructions}
+    ${textInstructions}
+    `;
+};
+
+// --- New Text Assistant Function ---
+export const getAssistantResponse = async (history: AssistantMessage[], language: Language): Promise<AssistantMessage> => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    const systemInstruction = baseAssistantSystemInstruction(language, false);
+    const lastMessage = history[history.length - 1];
+
+    try {
+        const chat = ai.chats.create({
+            model: fastTextModel,
+            config: {
+                systemInstruction: systemInstruction,
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        response: { type: Type.STRING },
+                        stickerId: { type: Type.STRING }
+                    },
+                    required: ["response"]
+                }
+            },
+            history: history.map(({ role, content }) => ({
+                role: role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: content }],
+            })).slice(0, -1)
+        });
+
+        const result = await chat.sendMessage({ message: lastMessage.content });
+        const jsonStr = result.text.trim();
+        const data = JSON.parse(jsonStr);
+
+        return {
+            role: 'assistant',
+            content: data.response,
+            stickerId: data.stickerId
+        };
+    } catch (error) {
+        console.error("Error getting assistant response:", error);
+        // Fallback to non-JSON response on parse error
+        const fallbackResponse = await ai.models.generateContent({
+            model: fastTextModel,
+            contents: { role: 'user', parts: [{ text: `(Previous context: ${history.slice(0, -1).map(m => m.content).join('\n')}) \n\n User request: ${lastMessage.content}` }] },
+            config: {
+                systemInstruction: systemInstruction, // still provide context
+            }
+        });
+
+        return {
+            role: 'assistant',
+            content: fallbackResponse.text.trim() || "I'm having a little trouble thinking right now, please try asking again!",
+        };
+    }
+};
+
+
+// --- Live Assistant Session Function ---
+export const startLiveAssistantSession = (callbacks: {
+    onMessage: (message: LiveServerMessage) => Promise<void>;
+    onError: (error: ErrorEvent) => void;
+    onClose: (event: CloseEvent) => void;
+    onOpen: () => void;
+}, language: Language) => {
+    
+    // From Uint8Array to base64
+    function encode(bytes: Uint8Array) {
+      let binary = '';
+      const len = bytes.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
+    }
+
+    // Create a Blob for the API from microphone data
+    function createBlob(data: Float32Array): import("@google/genai").Blob {
+      const l = data.length;
+      const int16 = new Int16Array(l);
+      for (let i = 0; i < l; i++) {
+        int16[i] = data[i] * 32768;
+      }
+      return {
+        data: encode(new Uint8Array(int16.buffer)),
+        mimeType: 'audio/pcm;rate=16000',
+      };
+    }
+
+    const sessionPromise = ai.live.connect({
+        model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+        callbacks: {
+            onopen: callbacks.onOpen,
+            onmessage: callbacks.onMessage,
+            onerror: callbacks.onError,
+            onclose: callbacks.onClose,
+        },
+        config: {
+            responseModalities: [Modality.AUDIO],
+            speechConfig: {
+                voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
+            },
+            systemInstruction: baseAssistantSystemInstruction(language, true),
+            outputAudioTranscription: {},
+            inputAudioTranscription: {},
+        },
+    });
+
+    return { sessionPromise, createBlob };
 };

@@ -1,3 +1,4 @@
+
 export type Language = 'zh-Hant' | 'en' | 'ja';
 export type Theme = 'light' | 'dark';
 export type View = 'upload_style' | 'ideas' | 'results' | 'export' | 'complete';
@@ -28,5 +29,18 @@ export interface GeneratedSticker {
 
 export interface EditingStickerInfo {
   id: string;
-  prompt: string;
+  src: string; // The base64 source of the image to be edited
+  prompt: string; // The original prompt, for reference
+}
+
+export interface EditingIdeaInfo {
+  id: string;
+  text: string;
+}
+
+// FIX: Added missing AssistantMessage type.
+export interface AssistantMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  stickerId?: string;
 }

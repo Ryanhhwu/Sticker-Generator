@@ -1,15 +1,16 @@
+
 import React, { useState } from 'react';
-import { StickerIdea, Language, UploadedImage } from '../types';
+import { StickerIdea, Language, UploadedImage, StickerType } from '../types';
 import { INSPIRATION_THEMES, TEXT_LANGUAGE_OPTIONS_I18N } from '../constants';
 import * as geminiService from '../services/geminiService';
-import { PlusIcon, RemoveIcon, RefreshIcon, LoadingSpinnerIcon, LightbulbIcon } from './icons/Icons';
+import { PlusIcon, RemoveIcon, RefreshIcon, LoadingSpinnerIcon, SearchIdeaIcon } from './icons/Icons';
 
 interface Step2Props {
     t: (key: string, replacements?: Record<string, string | number>) => string;
     language: Language;
     uploadedImages: UploadedImage[];
     stylePreviewImage: string | null;
-    selectedStyleId: string;
+    selectedStyleIds: string[];
     stickerCount: number;
     characterDescription: string;
     textMode: 'with_text' | 'none';
@@ -24,16 +25,21 @@ interface Step2Props {
     setShowLoadingOverlay: React.Dispatch<React.SetStateAction<boolean>>;
     // FIX: Add setLoadingMessage to props to allow setting the loading message.
     setLoadingMessage: React.Dispatch<React.SetStateAction<string>>;
-    generateStylePreview: () => Promise<void>;
+    onRegeneratePreview: () => Promise<void>;
+    stickerType: StickerType;
 }
 
 
 const Step2ThemeIdeas: React.FC<Step2Props> = (props) => {
-    const { t, language, uploadedImages, stylePreviewImage, selectedStyleId, stickerCount, characterDescription, textMode, textLanguage, stickerIdeas, setStickerIdeas, stickerTheme, setStickerTheme, setCurrentView, setError, handleStartGeneration, setShowLoadingOverlay, setLoadingMessage, generateStylePreview } = props;
+    const { t, language, uploadedImages, stylePreviewImage, selectedStyleIds, stickerCount, characterDescription, textMode, textLanguage, stickerIdeas, setStickerIdeas, stickerTheme, setStickerTheme, setCurrentView, setError, handleStartGeneration, setShowLoadingOverlay, setLoadingMessage, onRegeneratePreview, stickerType } = props;
     const [isGeneratingIdeas, setIsGeneratingIdeas] = useState(false);
     const [customIdeaInput, setCustomIdeaInput] = useState('');
     const [inspirationSuggestions, setInspirationSuggestions] = useState<string[]>([]);
-    const selectedStyleLabel = t(`style${selectedStyleId.charAt(0).toUpperCase() + selectedStyleId.slice(1)}Label`);
+    
+    const selectedStyleLabels = selectedStyleIds.map(id => 
+        t(`style${id.charAt(0).toUpperCase() + id.slice(1)}Label`)
+    ).join(' + ');
+
 
     const handleGenerateIdeas = async () => {
         if (!stickerTheme.trim()) return;
@@ -52,7 +58,8 @@ const Step2ThemeIdeas: React.FC<Step2Props> = (props) => {
                 characterDescription,
                 stickerCount,
                 langForPrompt,
-                textMode === 'with_text'
+                textMode === 'with_text',
+                stickerType
             );
             setStickerIdeas(ideas);
         } catch (err: any) {
@@ -134,10 +141,10 @@ const Step2ThemeIdeas: React.FC<Step2Props> = (props) => {
                             </div>
                         )}
                          <div className="absolute bottom-2 left-2 right-2 bg-black/50 text-white text-center text-sm p-2 rounded-lg backdrop-blur-sm">
-                            {t('yourCharacterInStyle', { styleName: selectedStyleLabel })}
+                            {t('yourCharacterInStyle', { styleName: selectedStyleLabels })}
                         </div>
                     </div>
-                    <button onClick={generateStylePreview} title={t('regeneratePreview')} className="w-full max-w-sm mx-auto mt-4 btn-secondary px-4 py-2 rounded-lg flex items-center justify-center gap-2">
+                    <button onClick={onRegeneratePreview} title={t('regeneratePreview')} className="w-full max-w-sm mx-auto mt-4 btn-secondary px-4 py-2 rounded-lg flex items-center justify-center gap-2">
                         <RefreshIcon /> {t('regeneratePreview')}
                     </button>
                 </div>
@@ -158,7 +165,7 @@ const Step2ThemeIdeas: React.FC<Step2Props> = (props) => {
                                 </div>
                             </div>
                             <button onClick={handleGetInspiration} className="w-full btn-secondary py-2 rounded-lg flex items-center justify-center gap-2 mb-3">
-                                <LightbulbIcon/> {t('getInspiration')}
+                                <SearchIdeaIcon/> {t('getInspiration')}
                             </button>
                             {inspirationSuggestions.length > 0 && (
                                 <div className="flex flex-wrap gap-2 justify-center mb-3">

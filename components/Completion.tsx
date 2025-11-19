@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { GeneratedSticker, StickerIdea } from '../types';
 import { CheckCircleIcon, ArrowRightIcon, RefreshIcon } from './icons/Icons';
@@ -7,12 +8,14 @@ interface CompletionProps {
     setCurrentView: (view: any) => void;
     generatedStickers: GeneratedSticker[];
     stickerIdeas: StickerIdea[];
+    stickerPackTitle: string;
+    stickerPackDescription: string;
 }
 
-const Completion: React.FC<CompletionProps> = ({ t, setCurrentView, generatedStickers, stickerIdeas }) => {
+const Completion: React.FC<CompletionProps> = ({ t, setCurrentView, generatedStickers, stickerIdeas, stickerPackTitle, stickerPackDescription }) => {
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const handleCreateAnother = () => {
-        window.location.reload();
+        setCurrentView('upload_style');
     };
 
     const handleCopy = (id: string, hashtags: string[]) => {
@@ -23,7 +26,7 @@ const Completion: React.FC<CompletionProps> = ({ t, setCurrentView, generatedSti
         }
     };
 
-    const allStickers = [...generatedStickers, ...generatedStickers]; // Double for seamless loop
+    const allStickersForMarquee = [...generatedStickers, ...generatedStickers]; // Double for seamless loop
 
     return (
         <div className="w-full max-w-4xl p-8 sm:p-12 rounded-3xl shadow-xl border mx-auto text-center flex flex-col items-center" style={{ backgroundColor: 'var(--card-bg-color)', borderColor: 'var(--card-border-color)' }}>
@@ -33,9 +36,14 @@ const Completion: React.FC<CompletionProps> = ({ t, setCurrentView, generatedSti
                 {t('completionDesc')}
             </p>
 
+            <div className="w-full text-left bg-gray-100 dark:bg-gray-800/50 p-4 rounded-lg mb-8 border" style={{ borderColor: 'var(--card-border-color)' }}>
+                <h3 className="text-xl font-bold mb-2">{stickerPackTitle}</h3>
+                <p style={{ color: 'var(--text-muted-color)'}}>{stickerPackDescription}</p>
+            </div>
+
             <div className="w-full overflow-hidden whitespace-nowrap mb-8">
                 <div className="marquee-container">
-                    {allStickers.map((sticker, index) => (
+                    {allStickersForMarquee.map((sticker, index) => (
                         sticker.displaySrc ? (
                             <img key={`${sticker.id}-${index}`} src={sticker.displaySrc} className="h-24 w-24 object-contain rounded-lg mx-4 p-1" style={{backgroundColor: 'var(--input-bg-color)'}} />
                         ) : null
@@ -44,13 +52,14 @@ const Completion: React.FC<CompletionProps> = ({ t, setCurrentView, generatedSti
             </div>
             
             <h3 className="font-bold text-lg mb-4">{t('allStickersInPack')}</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left w-full">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-left w-full">
                 {generatedStickers.map(sticker => {
                     const idea = stickerIdeas.find(i => i.id === sticker.id);
                     return (
-                        <div key={sticker.id} className="p-3 border rounded-lg" style={{backgroundColor: 'var(--input-bg-color)', borderColor: 'var(--card-border-color)'}}>
-                            <p className="font-semibold text-sm break-words">{idea?.text || '...'}</p>
-                            <div className="flex justify-between items-center mt-1">
+                        <div key={sticker.id} className="p-3 border rounded-lg flex flex-col items-center" style={{backgroundColor: 'var(--input-bg-color)', borderColor: 'var(--card-border-color)'}}>
+                             {sticker.displaySrc && <img src={sticker.displaySrc} className="w-24 h-24 object-contain mb-2" />}
+                            <p className="font-semibold text-sm break-words text-center w-full mb-2">{idea?.text || '...'}</p>
+                             <div className="flex justify-between items-center mt-auto w-full">
                                 <p className="text-xs flex-1 truncate" style={{color: 'var(--text-muted-color)'}} title={sticker.hashtags.join(', ')}>
                                     {sticker.hashtags.length > 0 ? sticker.hashtags.join(', ') : t('noKeywords')}
                                 </p>

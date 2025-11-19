@@ -1,4 +1,3 @@
-
 export const toBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -77,50 +76,22 @@ export const removeGreenScreenAndResize = (imageBase64: string, targetWidth: num
                 const index = i / 4;
 
                 const dist = Math.sqrt(Math.pow(r - 0, 2) + Math.pow(g - 255, 2) + Math.pow(b - 0, 2));
-                if (dist < 18) {
+                if (dist < 30) {
                     isGreenFlags[index] = 1;
                     continue;
                 }
 
                 const [h, s, l] = rgbToHsl(r, g, b);
-                if (h >= 60 && h <= 185 && s >= 0.22 && l >= 0.12 && l <= 0.95 && g >= r + 12 && g >= b + 12) {
+                if (h >= 80 && h <= 160 && s >= 0.3 && l >= 0.2 && g > r && g > b) {
                     isGreenFlags[index] = 1;
                 }
             }
-
-            const backgroundMask = new Uint8Array(width * height);
-            const queue: [number, number][] = [];
-
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    if (y === 0 || y === height - 1 || x === 0 || x === width - 1) {
-                        const index = y * width + x;
-                        if (isGreenFlags[index] === 1 && backgroundMask[index] === 0) {
-                            queue.push([x, y]);
-                            backgroundMask[index] = 1;
-                        }
-                    }
-                }
-            }
             
-            let head = 0;
-            while(head < queue.length) {
-                const [x, y] = queue[head++];
-                const neighbors = [[x, y - 1], [x, y + 1], [x - 1, y], [x + 1, y]];
-                for(const [nx, ny] of neighbors) {
-                    if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                        const nIndex = ny * width + nx;
-                        if (isGreenFlags[nIndex] === 1 && backgroundMask[nIndex] === 0) {
-                            backgroundMask[nIndex] = 1;
-                            queue.push([nx, ny]);
-                        }
-                    }
-                }
-            }
-
+            // This version removes ALL green pixels, including enclosed ones, by using isGreenFlags as the definitive background mask.
+            // This replaces the previous border-based flood fill logic.
             for (let i = 0; i < data.length; i += 4) {
                 const index = i / 4;
-                if (backgroundMask[index] === 1) {
+                if (isGreenFlags[index] === 1) {
                     data[i + 3] = 0;
                 } else {
                     const x = index % width;
@@ -131,7 +102,7 @@ export const removeGreenScreenAndResize = (imageBase64: string, targetWidth: num
                     if (x > 0 && x < width - 1 && y > 0 && y < height - 1) {
                         for(const [nx, ny] of neighbors) {
                             const nIndex = ny * width + nx;
-                            if (backgroundMask[nIndex] === 1) {
+                            if (isGreenFlags[nIndex] === 1) {
                                 isEdge = true;
                                 neighborIsBgCount++;
                             }
@@ -153,6 +124,7 @@ export const removeGreenScreenAndResize = (imageBase64: string, targetWidth: num
 
             sourceCtx.putImageData(imageData, 0, 0);
 
+            // Cropping and resizing logic remains unchanged.
             let minX = width, minY = height, maxX = -1, maxY = -1;
             const newData = sourceCtx.getImageData(0, 0, width, height).data;
             for (let y = 0; y < height; y++) {

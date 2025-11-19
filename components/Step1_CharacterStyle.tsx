@@ -1,3 +1,4 @@
+
 import React, { useState, ChangeEvent } from 'react';
 import { UploadedImage, Language, StickerType, OutlineStyle, TextMode } from '../types';
 import { toBase64, cropImageToSquare } from '../utils/imageProcessing';
@@ -11,8 +12,8 @@ interface Step1Props {
     setUploadedImages: React.Dispatch<React.SetStateAction<UploadedImage[]>>;
     stickerType: StickerType;
     setStickerType: React.Dispatch<React.SetStateAction<StickerType>>;
-    selectedStyleId: string;
-    setSelectedStyleId: React.Dispatch<React.SetStateAction<string>>;
+    selectedStyleIds: string[];
+    setSelectedStyleIds: React.Dispatch<React.SetStateAction<string[]>>;
     stickerCount: number;
     setStickerCount: React.Dispatch<React.SetStateAction<number>>;
     outlineStyle: OutlineStyle;
@@ -23,20 +24,21 @@ interface Step1Props {
     setTextMode: React.Dispatch<React.SetStateAction<TextMode>>;
     textLanguage: string;
     setTextLanguage: React.Dispatch<React.SetStateAction<string>>;
-    setCurrentView: (view: any) => void;
     setError: (error: string | null) => void;
-    setStylePreviewImage: React.Dispatch<React.SetStateAction<string | null>>;
     setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
     setLoadingMessage: React.Dispatch<React.SetStateAction<string>>;
     stylePreviewImage: string | null;
-    generateStylePreview: () => Promise<void>;
+    onGeneratePreviews: () => Promise<void>;
     setIsCameraOpen: React.Dispatch<React.SetStateAction<boolean>>;
+    styleStrength: number;
+    setStyleStrength: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const Step1CharacterStyle: React.FC<Step1Props> = (props) => {
-    const { t, language, uploadedImages, setUploadedImages, stickerType, setStickerType, selectedStyleId, setSelectedStyleId, stickerCount, setStickerCount, outlineStyle, setOutlineStyle, characterDescription, setCharacterDescription, textMode, setTextMode, textLanguage, setTextLanguage, setCurrentView, setError, setStylePreviewImage, setIsLoading, setLoadingMessage, generateStylePreview, setIsCameraOpen } = props;
+    const { t, language, uploadedImages, setUploadedImages, stickerType, setStickerType, selectedStyleIds, setSelectedStyleIds, stickerCount, setStickerCount, outlineStyle, setOutlineStyle, characterDescription, setCharacterDescription, textMode, setTextMode, textLanguage, setTextLanguage, setError, setIsLoading, setLoadingMessage, onGeneratePreviews, setIsCameraOpen, styleStrength, setStyleStrength } = props;
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
+    const [isMultiStyleMode, setIsMultiStyleMode] = useState(false);
 
     const processFiles = async (files: FileList | null) => {
         if (!files || files.length === 0) return;
@@ -110,11 +112,54 @@ const Step1CharacterStyle: React.FC<Step1Props> = (props) => {
             return;
         }
         setError(null);
-        setCurrentView('ideas');
-        await generateStylePreview();
+        await onGeneratePreviews();
+    };
+
+    const handleStyleSelect = (id: string) => {
+        if (isMultiStyleMode && id === 'original') {
+            return; // Don't allow selecting 'original' in multi-select mode.
+        }
+    
+        if (id === 'original') {
+            setSelectedStyleIds(['original']);
+            setIsMultiStyleMode(false); // Force single mode
+            return;
+        }
+    
+        if (isMultiStyleMode) {
+            setSelectedStyleIds(prev => {
+                const isSelected = prev.includes(id);
+                if (isSelected) {
+                    return prev.filter(styleId => styleId !== id);
+                }
+                if (prev.length < 3) {
+                    return [...prev, id];
+                }
+                setError(t('maxStylesWarning'));
+                return prev;
+            });
+        } else {
+            setSelectedStyleIds([id]);
+        }
     };
     
-    const selectedStyleKey = `style${selectedStyleId.charAt(0).toUpperCase() + selectedStyleId.slice(1)}` as any;
+    const handleMultiStyleToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const checked = e.target.checked;
+        setIsMultiStyleMode(checked);
+    
+        if (checked) {
+            // When switching to multi-mode, remove 'original' if it was selected
+            setSelectedStyleIds(prev => prev.filter(id => id !== 'original'));
+        } else {
+            // When switching to single-mode, keep only the last selected item if multiple were selected
+            if (selectedStyleIds.length > 1) {
+                setSelectedStyleIds(prev => [prev[prev.length - 1]]);
+            }
+        }
+    };
+    
+    const lastSelectedStyleId = selectedStyleIds.length > 0 ? selectedStyleIds[selectedStyleIds.length - 1] : 'anime';
+    const selectedStyleKey = `style${lastSelectedStyleId.charAt(0).toUpperCase() + lastSelectedStyleId.slice(1)}` as any;
 
     return (
         <div className="w-full max-w-7xl p-6 sm:p-8 rounded-3xl shadow-xl border mx-auto" style={{ backgroundColor: 'var(--card-bg-color)', borderColor: 'var(--card-border-color)', backdropFilter: 'blur(10px)' }}>
@@ -128,7 +173,7 @@ const Step1CharacterStyle: React.FC<Step1Props> = (props) => {
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
-                        className={`group cursor-pointer w-full max-w-sm mx-auto aspect-square border-2 border-dashed rounded-3xl flex flex-col items-center justify-center p-4 transition-all duration-300 shadow-inner relative overflow-hidden
+                        className={`group cursor-pointer w-full mx-auto aspect-square border-2 border-dashed rounded-3xl flex flex-col items-center justify-center p-4 transition-all duration-300 shadow-inner relative overflow-hidden
                             ${isDragging ? 'border-green-500 bg-green-50 dark:bg-green-900/30 ring-4 ring-green-500/20' : 'border-gray-300 dark:border-gray-600'}
                             ${uploadedImages.length > 0 ? 'border-solid p-3' : ''}
                         `}
@@ -164,7 +209,7 @@ const Step1CharacterStyle: React.FC<Step1Props> = (props) => {
                         )}
                     </label>
 
-                    <div className="w-full max-w-sm mx-auto mt-4 grid grid-cols-2 gap-3">
+                    <div className="w-full mx-auto mt-4 grid grid-cols-2 gap-3">
                         <label htmlFor="file-upload-button" className="btn-secondary px-4 py-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer text-base text-center">
                             <UploadIcon className="h-6 w-6" />
                             <span>{t('uploadFromFile')}</span>
@@ -205,11 +250,23 @@ const Step1CharacterStyle: React.FC<Step1Props> = (props) => {
                         </div>
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold mb-2">{t('styleSelection')}</h3>
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="text-lg font-semibold">{t('styleSelection')}</h3>
+                            <div className="flex items-center gap-2">
+                                <label htmlFor="multi-style-toggle" className="text-sm font-medium" style={{color: 'var(--text-muted-color)'}}>{t('multiSelectStyles')}</label>
+                                <input 
+                                    id="multi-style-toggle"
+                                    type="checkbox" 
+                                    className="form-checkbox"
+                                    checked={isMultiStyleMode} 
+                                    onChange={handleMultiStyleToggle}
+                                />
+                            </div>
+                        </div>
                         <p className="text-base mb-4" style={{ color: 'var(--text-muted-color)' }}>{t('stylePrompt')}</p>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-[22rem] overflow-y-auto pr-2 style-grid">
                             {STYLE_IDS.map(id => (
-                                <div key={id} onClick={() => setSelectedStyleId(id)} className={`p-2 rounded-lg border-2 cursor-pointer transition-all duration-200 flex flex-col items-center text-center ${id === selectedStyleId ? 'style-card-active' : 'hover:border-green-400'}`} style={{ backgroundColor: 'var(--card-bg-color)', borderColor: 'var(--input-border-color)' }}>
+                                <div key={id} onClick={() => handleStyleSelect(id)} className={`p-2 rounded-lg border-2 cursor-pointer transition-all duration-200 flex flex-col items-center text-center ${selectedStyleIds.includes(id) ? 'style-card-active' : 'hover:border-green-400'} ${isMultiStyleMode && id === 'original' ? 'opacity-50 cursor-not-allowed' : ''}`} style={{ backgroundColor: 'var(--card-bg-color)', borderColor: 'var(--input-border-color)' }}>
                                     <img src={STYLE_CARD_THUMBNAILS[id]} alt={t(`style${id.charAt(0).toUpperCase() + id.slice(1)}Label`)} className="w-full h-auto aspect-[15/8] rounded-md mb-2 object-cover"/>
                                     <p className="font-semibold text-base leading-tight">{t(`style${id.charAt(0).toUpperCase() + id.slice(1)}Label`)}</p>
                                     <p className="text-sm mt-1" style={{ color: 'var(--text-muted-color)' }}>{t(`style${id.charAt(0).toUpperCase() + id.slice(1)}ShortDesc`)}</p>
@@ -221,7 +278,24 @@ const Step1CharacterStyle: React.FC<Step1Props> = (props) => {
                                 <p className="font-semibold text-base">{t(`${selectedStyleKey}Label`)}</p>
                                 <p className="text-sm mt-1" style={{ color: 'var(--text-muted-color)' }}>{t(`${selectedStyleKey}Desc`)}</p>
                             </div>
-                            <img src={STYLE_DESCRIPTION_IMAGES[selectedStyleId] ?? STYLE_CARD_THUMBNAILS[selectedStyleId]} alt="Style Thumbnail" className="w-24 h-24 rounded-md object-cover flex-shrink-0" />
+                            <img src={STYLE_DESCRIPTION_IMAGES[lastSelectedStyleId] ?? STYLE_CARD_THUMBNAILS[lastSelectedStyleId]} alt="Style Thumbnail" className="w-24 h-24 rounded-md object-cover flex-shrink-0" />
+                        </div>
+                    </div>
+                    <div>
+                        <label htmlFor="style-strength" className="block text-base font-medium mb-1">{t('styleStrength')}</label>
+                        <p className="text-sm mb-2" style={{ color: 'var(--text-muted-color)' }}>{t('styleStrengthDesc')}</p>
+                        <div className="flex items-center gap-4">
+                            <span className="text-sm" style={{ color: 'var(--text-muted-color)' }}>{t('moreFaithful')}</span>
+                            <input
+                                id="style-strength"
+                                type="range"
+                                min="1"
+                                max="5"
+                                value={styleStrength}
+                                onChange={(e) => setStyleStrength(Number(e.target.value))}
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                            />
+                            <span className="text-sm" style={{ color: 'var(--text-muted-color)' }}>{t('moreStylized')}</span>
                         </div>
                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -264,7 +338,7 @@ const Step1CharacterStyle: React.FC<Step1Props> = (props) => {
                             )}
                         </div>
                     </div>
-                    <button onClick={handleNextStep} disabled={uploadedImages.length === 0} className="w-full text-lg mt-8 py-3 rounded-xl btn-primary text-white bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:bg-gray-400 disabled:from-gray-400 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl disabled:shadow-none transform hover:-translate-y-1">{t('nextPreviewAndCustomize')}</button>
+                    <button onClick={handleNextStep} disabled={uploadedImages.length === 0 || selectedStyleIds.length === 0} className="w-full text-lg mt-8 py-3 rounded-xl btn-primary text-white bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:bg-gray-400 disabled:from-gray-400 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl disabled:shadow-none transform hover:-translate-y-1">{t('nextPreviewAndCustomize')}</button>
                 </div>
             </div>
         </div>

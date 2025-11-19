@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import JSZip from 'jszip';
 import saveAs from 'file-saver';
@@ -32,18 +33,23 @@ const Step4Export: React.FC<Step4Props> = (props) => {
 
     const [isDownloading, setIsDownloading] = useState(false);
     const successfulStickers = generatedStickers.filter(s => s.displaySrc);
-    const mainSticker = successfulStickers.find(s => s.id === mainStickerId);
+    const mainStickerPreview = successfulStickers.find(s => s.id === mainStickerId);
 
     const handleIncludeChange = (id: string, isChecked: boolean) => {
         if (isChecked) {
             setIncludedStickerIds([...includedStickerIds, id]);
         } else {
-            setIncludedStickerIds(includedStickerIds.filter(i => i !== id));
-            if (mainStickerId === id) setMainStickerId(null);
-            if (tabStickerId === id) setTabStickerId(null);
+            const newIds = includedStickerIds.filter(i => i !== id);
+            setIncludedStickerIds(newIds);
+            if (mainStickerId === id) {
+                setMainStickerId(newIds.length > 0 ? newIds[0] : null);
+            }
+            if (tabStickerId === id) {
+                setTabStickerId(newIds.length > 0 ? newIds[0] : null);
+            }
         }
     };
-
+    
     const handleDownloadZip = async () => {
         setIsDownloading(true);
         try {
@@ -73,6 +79,22 @@ const Step4Export: React.FC<Step4Props> = (props) => {
                 }
             });
 
+            // Create and add info.txt file
+            let infoFileContent = `Sticker Pack Information\n========================\n\n`;
+            infoFileContent += `Title: ${stickerPackTitle}\n`;
+            infoFileContent += `Description: ${stickerPackDescription}\n\n`;
+            infoFileContent += `Stickers & Individual Keywords\n---------------------\n\n`;
+
+            stickersToExport.forEach((sticker, index) => {
+                const idea = stickerIdeas.find(i => i.id === sticker.id);
+                infoFileContent += `Sticker ${index + 1} (${index + 1}.png):\n`;
+                infoFileContent += `  - Idea: ${idea ? idea.text : 'N/A'}\n`;
+                infoFileContent += `  - Keywords: ${sticker.hashtags.length > 0 ? sticker.hashtags.join(', ') : 'No keywords generated'}\n\n`;
+            });
+            
+            zip.file('info.txt', infoFileContent);
+
+
             await Promise.all(processingPromises);
             
             const content = await zip.generateAsync({ type: 'blob' });
@@ -89,77 +111,98 @@ const Step4Export: React.FC<Step4Props> = (props) => {
     };
     
     return (
-        <div className="w-full max-w-7xl p-6 sm:p-8 rounded-3xl shadow-xl border mx-auto" style={{ backgroundColor: 'var(--card-bg-color)', borderColor: 'var(--card-border-color)' }}>
-            <h2 className="text-2xl font-bold mb-2 text-green-600">{t('step4Title')}</h2>
-            <p className="mb-2" style={{ color: 'var(--text-muted-color)'}}>{t('step4Desc1')}</p>
-            <ul className="list-disc list-inside text-sm space-y-1 mb-6" style={{ color: 'var(--text-muted-color)'}}>
-                <li className="ml-4"><b>{t('main')}:</b> {t('step4DescMain')}</li>
-                <li className="ml-4"><b>{t('tab')}:</b> {t('step4DescTab')}</li>
-            </ul>
+        <div className="container mx-auto max-w-5xl p-4 sm:p-6 lg:p-8">
+            <header className="mb-8">
+                <h1 className="text-3xl font-bold text-green-500">{t('step4Title')}</h1>
+                <p className="mt-2" style={{ color: 'var(--text-muted-color)' }}>{t('step4Desc1')}</p>
+                <ul className="mt-2 list-disc list-inside space-y-1" style={{ color: 'var(--text-muted-color)' }}>
+                    <li><span className="font-semibold" style={{ color: 'var(--text-color)' }}>{t('main')}:</span> {t('step4DescMain')}</li>
+                    <li><span className="font-semibold" style={{ color: 'var(--text-color)' }}>{t('tab')}:</span> {t('step4DescTab')}</li>
+                </ul>
+            </header>
 
-            {mainSticker && (
-                 <div className="mb-8 p-4 rounded-xl border grid grid-cols-1 md:grid-cols-3 gap-6 items-center" style={{ backgroundColor: 'var(--input-bg-color)', borderColor: 'var(--input-border-color)'}}>
-                    <div className="flex justify-center md:col-span-1">
-                        <img src={mainSticker.displaySrc!} className="w-48 h-48 object-contain rounded-lg p-2" style={{backgroundColor: 'var(--bg-color)'}}/>
-                    </div>
-                    <div className="md:col-span-2 space-y-4">
-                        <h3 className="font-bold text-lg">{t('storePreview')}</h3>
-                        <div>
-                            <label className="block text-sm font-semibold mb-1">{t('stickerTitle')}</label>
-                            <input type="text" value={stickerPackTitle} onChange={(e) => setStickerPackTitle(e.target.value)} className="w-full border rounded-lg p-2 text-base" style={{ backgroundColor: 'var(--card-hover-bg)', borderColor: 'var(--input-border-color)'}} />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-semibold mb-1">{t('stickerDesc')}</label>
-                            <textarea value={stickerPackDescription} onChange={(e) => setStickerPackDescription(e.target.value)} className="w-full border rounded-lg p-2 text-base" rows={3} style={{ backgroundColor: 'var(--card-hover-bg)', borderColor: 'var(--input-border-color)'}} />
-                        </div>
-                    </div>
-                </div>
-            )}
-            
-            <h3 className="font-bold text-lg mb-4 mt-8">{t('selectYourStickers')}</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                {successfulStickers.map(sticker => {
-                    const idea = stickerIdeas.find(i => i.id === sticker.id);
-                    const isIncluded = includedStickerIds.includes(sticker.id);
-                    return (
-                        <div key={sticker.id} className={`border rounded-lg p-2 flex flex-col gap-2 transition-opacity ${isIncluded ? 'opacity-100' : 'opacity-50'}`} style={{ backgroundColor: 'var(--card-hover-bg)', borderColor: 'var(--card-border-color)'}}>
-                            <p className="text-xs font-semibold text-center break-words">{idea?.text || '...'}</p>
-                            <div className="aspect-square mb-1 bg-white/50 rounded-md">
-                                <img src={sticker.displaySrc!} className="w-full h-full object-contain p-1" />
-                            </div>
-                             <div className="flex items-center">
-                                <input type="checkbox" id={`include-${sticker.id}`} onChange={e => handleIncludeChange(sticker.id, e.target.checked)} checked={isIncluded} className="form-checkbox mr-2"/>
-                                <label htmlFor={`include-${sticker.id}`} className="text-sm cursor-pointer">{t('includeInExport')}</label>
-                            </div>
-                            <div className="text-sm flex justify-around gap-2">
-                                <label className="flex items-center cursor-pointer">
-                                    <input type="radio" name="main-sticker-radio" onChange={e => setMainStickerId(e.target.checked ? sticker.id : null)} checked={mainStickerId === sticker.id} disabled={!isIncluded} className="form-radio mr-1"/>
-                                    {t('main')}
-                                </label>
-                                 <label className="flex items-center cursor-pointer">
-                                    <input type="radio" name="tab-sticker-radio" onChange={e => setTabStickerId(e.target.checked ? sticker.id : null)} checked={tabStickerId === sticker.id} disabled={!isIncluded} className="form-radio mr-1"/>
-                                    {t('tab')}
-                                </label>
-                            </div>
-                             {sticker.hashtags.length > 0 && (
-                                <div className="text-xs pt-1 border-t" style={{ borderColor: 'var(--card-border-color)', color: 'var(--text-muted-color)'}}>
-                                    <p className="font-semibold">{t('keywords')}</p>
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                        {sticker.hashtags.map(h => <span key={h} className="px-1.5 py-0.5 rounded text-xs" style={{backgroundColor: 'var(--btn-secondary-bg)', color: 'var(--btn-secondary-text)'}}>{h}</span>)}
-                                    </div>
-                                </div>
+            <main className="space-y-10">
+                <section className="p-6 sm:p-8 rounded-lg border" style={{ backgroundColor: 'var(--card-bg-color)', borderColor: 'var(--card-border-color)' }}>
+                    <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--text-color)' }}>{t('storePreview')}</h2>
+                    <div className="flex flex-col md:flex-row gap-8">
+                        <div className="flex-shrink-0 w-full md:w-48 h-48 flex items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--card-hover-bg)'}}>
+                            {mainStickerPreview ? (
+                                <img alt={t('main')} className="object-contain h-full w-full p-2" src={mainStickerPreview.displaySrc!} />
+                            ) : (
+                               <div className="text-center p-4" style={{ color: 'var(--text-muted-color)'}}>{t('selectMainSticker')}</div>
                             )}
                         </div>
-                    );
-                })}
-            </div>
+                        <div className="flex-grow space-y-6">
+                            <div>
+                                <label className="block text-sm font-medium mb-2" htmlFor="sticker-title" style={{ color: 'var(--text-muted-color)' }}>{t('stickerTitle')}</label>
+                                <input className="w-full rounded-lg border focus:ring-green-500 focus:border-green-500" id="sticker-title" type="text" value={stickerPackTitle} onChange={(e) => setStickerPackTitle(e.target.value)} style={{ backgroundColor: 'var(--input-bg-color)', borderColor: 'var(--input-border-color)', color: 'var(--text-color)' }}/>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-2" htmlFor="sticker-description" style={{ color: 'var(--text-muted-color)' }}>{t('stickerDesc')}</label>
+                                <textarea className="w-full rounded-lg border focus:ring-green-500 focus:border-green-500" id="sticker-description" rows={3} value={stickerPackDescription} onChange={(e) => setStickerPackDescription(e.target.value)} style={{ backgroundColor: 'var(--input-bg-color)', borderColor: 'var(--input-border-color)', color: 'var(--text-color)' }}></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
-            <div className="mt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-                 <button onClick={() => setCurrentView('results')} className="btn-secondary px-6 py-3 rounded-xl w-full sm:w-auto">{t('back')}</button>
-                 <button onClick={handleDownloadZip} disabled={isDownloading || !mainStickerId || !tabStickerId || includedStickerIds.length === 0} className="btn-primary px-8 py-4 rounded-lg text-lg w-full sm:w-auto flex items-center justify-center gap-2">
-                    {isDownloading ? t('downloading') : <><DownloadIcon /> {t('exportButton', {count: includedStickerIds.length})}</>}
-                </button>
-            </div>
+                <section>
+                    <div className="flex items-baseline gap-4 mb-6">
+                        <h2 className="text-xl font-bold" style={{ color: 'var(--text-color)' }}>{t('selectYourStickers')}</h2>
+                        <p className="text-sm" style={{ color: 'var(--text-muted-color)' }}>{t('exportSelectionHint')}</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {successfulStickers.map(sticker => {
+                            const idea = stickerIdeas.find(i => i.id === sticker.id);
+                            const isIncluded = includedStickerIds.includes(sticker.id);
+                            return (
+                                <div key={sticker.id} className={`relative transition-opacity ${isIncluded ? 'opacity-100' : 'opacity-60 hover:opacity-100'}`}>
+                                    <input id={`include-${sticker.id}`} checked={isIncluded} onChange={e => handleIncludeChange(sticker.id, e.target.checked)} className="form-checkbox h-5 w-5 rounded absolute -top-2 -left-2 z-10" type="checkbox"/>
+                                    <div className="rounded-lg border overflow-hidden flex flex-col h-full" style={{ backgroundColor: 'var(--card-bg-color)', borderColor: 'var(--card-border-color)' }}>
+                                        <div className="p-4">
+                                            <p className="text-sm h-16 text-justify overflow-hidden" style={{ color: 'var(--text-muted-color)' }}>{idea?.text}</p>
+                                        </div>
+                                        <div className="aspect-w-1 aspect-h-1 w-full" style={{ backgroundColor: 'var(--card-hover-bg)' }}>
+                                            <img alt={idea?.text} className="object-contain w-full h-full p-4" src={sticker.displaySrc!} />
+                                        </div>
+                                        <div className="p-4 space-y-4 border-t" style={{ borderColor: 'var(--input-border-color)' }}>
+                                            <div className="flex items-center justify-around">
+                                                <label className={`flex items-center space-x-2 ${isIncluded ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                                                    <input disabled={!isIncluded} checked={mainStickerId === sticker.id} onChange={() => setMainStickerId(sticker.id)} className="form-radio h-4 w-4" name="main-sticker" type="radio"/>
+                                                    <span className={`text-sm ${mainStickerId === sticker.id ? 'font-bold text-green-600' : ''}`} style={{ color: mainStickerId !== sticker.id ? 'var(--text-color)' : ''}}>{t('main')}</span>
+                                                </label>
+                                                <label className={`flex items-center space-x-2 ${isIncluded ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                                                    <input disabled={!isIncluded} checked={tabStickerId === sticker.id} onChange={() => setTabStickerId(sticker.id)} className="form-radio h-4 w-4" name="tab-sticker" type="radio"/>
+                                                    <span className={`text-sm ${tabStickerId === sticker.id ? 'font-bold text-green-600' : ''}`} style={{ color: tabStickerId !== sticker.id ? 'var(--text-color)' : ''}}>{t('tab')}</span>
+                                                </label>
+                                            </div>
+                                            {sticker.hashtags.length > 0 && (
+                                                <div>
+                                                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-muted-color)' }}>{t('stickerKeywords')}</label>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {sticker.hashtags.map(tag => (
+                                                            <div key={tag} className="px-2.5 py-1 text-sm rounded-full" style={{backgroundColor: 'var(--btn-secondary-bg)', color: 'var(--btn-secondary-text)'}}>#{tag}</div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
+
+                 <footer className="flex flex-col sm:flex-row items-center justify-between pt-8 border-t" style={{ borderColor: 'var(--card-border-color)' }}>
+                    <button onClick={() => setCurrentView('results')} className="w-full sm:w-auto order-2 sm:order-1 mt-4 sm:mt-0 px-6 py-3 rounded-lg font-semibold transition-colors btn-secondary" type="button">
+                        {t('back')}
+                    </button>
+                    <button onClick={handleDownloadZip} disabled={isDownloading || !mainStickerId || !tabStickerId || includedStickerIds.length === 0} className="w-full sm:w-auto order-1 sm:order-2 flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-white font-bold shadow-lg transition-all transform hover:scale-105 btn-primary disabled:opacity-50" type="button">
+                        <DownloadIcon />
+                         {isDownloading ? t('downloading') : t('exportButton', {count: includedStickerIds.length})}
+                    </button>
+                </footer>
+            </main>
         </div>
     );
 };
