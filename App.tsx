@@ -476,7 +476,8 @@ function App() {
 
             const storeInfo = await geminiService.generateStoreInfo(stickerTheme, ideaTexts, langForPrompt);
             
-            const updatedStickersWithHashtags = [];
+            // Explicit type declaration to avoid implicit any[] error
+            const updatedStickersWithHashtags: GeneratedSticker[] = [];
             for (const sticker of successfulStickers) {
                 let currentSticker = sticker;
                 if (sticker.hashtags.length === 0) {

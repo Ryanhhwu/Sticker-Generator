@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { LiveServerMessage, LiveSession } from "@google/genai";
+import { LiveServerMessage } from "@google/genai";
 import { Language } from '../types';
 import * as geminiService from '../services/geminiService';
 import { StopIcon } from './icons/Icons';
@@ -53,7 +53,7 @@ const LiveAssistantContent: React.FC<LiveAssistantContentProps> = ({ t, isActive
     const [status, setStatus] = useState<'idle' | 'connecting' | 'listening' | 'speaking' | 'error'>('idle');
     const [error, setError] = useState<string | null>(null);
 
-    const sessionPromiseRef = useRef<Promise<LiveSession> | null>(null);
+    const sessionPromiseRef = useRef<Promise<any> | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const inputAudioContextRef = useRef<AudioContext | null>(null);
     const outputAudioContextRef = useRef<AudioContext | null>(null);
@@ -146,7 +146,7 @@ const LiveAssistantContent: React.FC<LiveAssistantContentProps> = ({ t, isActive
                         const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
                         const pcmBlob = createBlob(inputData);
                         
-                        sessionPromiseRef.current?.then((session) => {
+                        sessionPromiseRef.current?.then((session: any) => {
                             session.sendRealtimeInput({ media: pcmBlob });
                         });
                     };
@@ -160,43 +160,46 @@ const LiveAssistantContent: React.FC<LiveAssistantContentProps> = ({ t, isActive
             },
             onMessage: async (message: LiveServerMessage) => {
                 if (message.serverContent?.inputTranscription) {
-                    const { text, isFinal } = message.serverContent.inputTranscription;
+                    const { text } = message.serverContent.inputTranscription;
                     currentInputTranscription += text;
                     setTranscripts(prev => {
                         const last = prev[prev.length - 1];
-                        if (last?.role === 'user' && !last.isFinal) {
-                            return [...prev.slice(0, -1), { role: 'user', content: currentInputTranscription, isFinal }];
+                        if (last?.role === 'user') {
+                             // Update last user message
+                             const newTranscripts = [...prev];
+                             newTranscripts[newTranscripts.length - 1] = { role: 'user', content: currentInputTranscription, isFinal: false };
+                             return newTranscripts;
                         } else {
-                            return [...prev, { role: 'user', content: currentInputTranscription, isFinal }];
+                            return [...prev, { role: 'user', content: currentInputTranscription, isFinal: false }];
                         }
                     });
-                     if (isFinal) {
-                        currentInputTranscription = '';
-                    }
                 }
                 
                 if (message.serverContent?.outputTranscription) {
                     setStatus('speaking');
-                    const { text, isFinal } = message.serverContent.outputTranscription;
+                    const { text } = message.serverContent.outputTranscription;
                     currentOutputTranscription += text;
                      setTranscripts(prev => {
                         const last = prev[prev.length - 1];
-                        if (last?.role === 'assistant' && !last.isFinal) {
-                            return [...prev.slice(0, -1), { role: 'assistant', content: currentOutputTranscription, isFinal }];
+                        if (last?.role === 'assistant') {
+                            // Update last assistant message
+                             const newTranscripts = [...prev];
+                             newTranscripts[newTranscripts.length - 1] = { role: 'assistant', content: currentOutputTranscription, isFinal: false };
+                             return newTranscripts;
                         } else {
-                            return [...prev, { role: 'assistant', content: currentOutputTranscription, isFinal }];
+                            return [...prev, { role: 'assistant', content: currentOutputTranscription, isFinal: false }];
                         }
                     });
-                    if (isFinal) {
-                        currentOutputTranscription = '';
-                    }
                 }
 
                 if (message.serverContent?.turnComplete) {
                      setStatus('listening');
+                     currentInputTranscription = '';
+                     currentOutputTranscription = '';
+                     setTranscripts(prev => prev.map(t => ({...t, isFinal: true})));
                 }
                 
-                const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
+                const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
                 if (base64Audio && outputAudioContextRef.current) {
                     const outputCtx = outputAudioContextRef.current;
                     nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputCtx.currentTime);
@@ -220,6 +223,8 @@ const LiveAssistantContent: React.FC<LiveAssistantContentProps> = ({ t, isActive
                     audioSourcesRef.current.forEach(s => s.stop());
                     audioSourcesRef.current.clear();
                     nextStartTimeRef.current = 0;
+                    currentOutputTranscription = '';
+                    currentInputTranscription = '';
                 }
             },
             onError: (e: ErrorEvent) => {

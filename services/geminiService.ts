@@ -4,6 +4,9 @@ import { UploadedImage, StickerIdea, StickerType, Language, AssistantMessage } f
 import { v4 as uuidv4 } from 'uuid';
 import { PIPI_STICKERS } from '../constants';
 
+// Declare process for compatibility if types are not picked up immediately
+declare const process: any;
+
 // FIX: Initialize GoogleGenAI with apiKey from environment variables.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
@@ -54,7 +57,7 @@ export const generateImage = async (prompt: string, referenceImages: UploadedIma
 
         for (const part of response.candidates?.[0]?.content?.parts || []) {
             if (part.inlineData) {
-                const mimeType = part.inlineData.mimeType;
+                const mimeType = part.inlineData.mimeType || 'image/png';
                 const base64ImageBytes: string = part.inlineData.data;
                 return `data:${mimeType};base64,${base64ImageBytes}`;
             }
@@ -148,7 +151,7 @@ export const editImage = async (base64Image: string, prompt: string, originalPro
 
         for (const part of response.candidates?.[0]?.content?.parts || []) {
             if (part.inlineData) {
-                const mimeType = part.inlineData.mimeType;
+                const mimeType = part.inlineData.mimeType || 'image/png';
                 const base64ImageBytes: string = part.inlineData.data;
                 return `data:${mimeType};base64,${base64ImageBytes}`;
             }
@@ -207,7 +210,7 @@ export const getInspirationFromImages = async (referenceImages: UploadedImage[],
             }
         });
 
-        const jsonStr = response.text.trim();
+        const jsonStr = (response.text || "[]").trim();
         return JSON.parse(jsonStr);
     } catch (error) {
         console.error("Failed to get inspiration from images:", error);
@@ -295,7 +298,7 @@ export const generateStickerIdeas = async (
             }
         });
         
-        const jsonStr = response.text.trim();
+        const jsonStr = (response.text || "[]").trim();
         const ideas: Omit<StickerIdea, 'id'>[] = JSON.parse(jsonStr);
         return ideas.map(idea => ({ ...idea, id: uuidv4() }));
     } catch (error) {
@@ -325,7 +328,7 @@ export const translateAndRefinePrompt = async (originalPrompt: string, userReque
             model: fastTextModel,
             contents: prompt,
         });
-        return response.text.trim();
+        return (response.text || "").trim();
     } catch (error) {
         console.error("Error refining prompt:", error);
         throw new Error("Failed to refine prompt.");
@@ -347,7 +350,7 @@ export const generateHashtags = async (ideaText: string, language: string): Prom
                 }
             }
         });
-        const jsonStr = response.text.trim();
+        const jsonStr = (response.text || "[]").trim();
         return JSON.parse(jsonStr);
     } catch (error) {
         console.error("Failed to generate hashtags:", error);
@@ -373,7 +376,7 @@ export const generateStoreInfo = async (theme: string, ideaTexts: string[], lang
                 }
             }
         });
-        const jsonStr = response.text.trim();
+        const jsonStr = (response.text || "{}").trim();
         return JSON.parse(jsonStr);
     } catch (error) {
         console.error("Failed to generate store info:", error);
@@ -471,7 +474,7 @@ export const getAssistantResponse = async (history: AssistantMessage[], language
         });
 
         const result = await chat.sendMessage({ message: lastMessage.content });
-        const jsonStr = result.text.trim();
+        const jsonStr = (result.text || "{}").trim();
         const data = JSON.parse(jsonStr);
 
         return {
@@ -492,7 +495,7 @@ export const getAssistantResponse = async (history: AssistantMessage[], language
 
         return {
             role: 'assistant',
-            content: fallbackResponse.text.trim() || "I'm having a little trouble thinking right now, please try asking again!",
+            content: (fallbackResponse.text || "").trim() || "I'm having a little trouble thinking right now, please try asking again!",
         };
     }
 };
