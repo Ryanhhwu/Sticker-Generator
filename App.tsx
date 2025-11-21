@@ -5,7 +5,7 @@ import { useTranslations } from './utils/translations';
 import { createEnhancedPrompt } from './utils/promptHelper';
 import * as geminiService from './services/geminiService';
 import { removeGreenScreenAndResize, cropImageToSquare } from './utils/imageProcessing';
-import { STICKER_SPECS, TEXT_LANGUAGE_OPTIONS_I18N, MAX_UPLOAD_COUNT, NO_THREE_VIEW_STYLES } from './constants';
+import { STICKER_SPECS, TEXT_LANGUAGE_OPTIONS_I18N, MAX_UPLOAD_COUNT, NO_THREE_VIEW_STYLES, AUDIO_URLS } from './constants';
 
 import Header from './components/Header';
 import Step1CharacterStyle from './components/Step1_CharacterStyle';
@@ -20,14 +20,20 @@ import CameraModal from './components/CameraModal';
 import PreviewSelectionModal from './components/PreviewSelectionModal';
 import ConfirmationModal from './components/ConfirmationModal';
 import AssistantModal from './components/AssistantModal';
-import { SparklesIcon } from './components/icons/Icons';
+import BackgroundBubbles from './components/BackgroundBubbles';
+import LandingPage from './components/LandingPage';
 
 const LOCAL_STORAGE_KEY = 'stickerMakerProgress';
 
 function App() {
+    // App Flow State
+    const [hasStarted, setHasStarted] = useState(false);
+    const appAudioRef = useRef<HTMLAudioElement | null>(null);
+
     // Internationalization and Theming
     const [language, setLanguage] = useState<Language>('zh-Hant');
-    const [theme, setTheme] = useState<Theme>('light');
+    // Default to dark theme based on new design
+    const [theme, setTheme] = useState<Theme>('dark'); 
     const { t, setLanguage: setT } = useTranslations(language);
 
     // App State
@@ -75,8 +81,31 @@ function App() {
     const [assistantMessages, setAssistantMessages] = useState<AssistantMessage[]>([]);
     const [isAssistantLoading, setIsAssistantLoading] = useState(false);
     
+    // BGM Effect
     useEffect(() => {
-        // Initialize with a welcome message whenever the language changes and messages are empty
+        if (hasStarted) {
+            const audio = new Audio(AUDIO_URLS.APP_BGM);
+            audio.loop = true;
+            audio.volume = 0.3; // Set a non-intrusive background volume
+            appAudioRef.current = audio;
+            
+            // Since the user has already interacted with the page (clicked Start on LandingPage),
+            // autoplay should generally work here. We add catch just in case.
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(e => {
+                    console.log("App BGM play failed (This might be due to browser policy if interaction wasn't registered or invalid source)", e);
+                });
+            }
+            
+            return () => {
+                audio.pause();
+                audio.src = "";
+            }
+        }
+    }, [hasStarted]);
+
+    useEffect(() => {
         if (assistantMessages.length === 0) {
             setAssistantMessages([
                 { role: 'assistant', content: t('assistantWelcome'), stickerId: 'pipi_hello' }
@@ -100,7 +129,6 @@ function App() {
         }
     };
 
-
     // Load state from localStorage on initial render
     useEffect(() => {
         try {
@@ -111,14 +139,15 @@ function App() {
                 const EXPIRATION_TIME_MS = 24 * 60 * 60 * 1000; // 24 hours
                 if (savedData.timestamp && (new Date().getTime() - savedData.timestamp > EXPIRATION_TIME_MS)) {
                     localStorage.removeItem(LOCAL_STORAGE_KEY);
-                    return; // Data is expired, start fresh.
+                    return; 
                 }
 
-                const savedState = savedData.state || savedData; // Handle old format without timestamp wrapper
+                const savedState = savedData.state || savedData; 
                 
                 setCurrentView(savedState.currentView ?? 'upload_style');
                 setLanguage(savedState.language ?? 'zh-Hant');
-                setTheme(savedState.theme ?? 'light');
+                // We prefer dark theme for the new design, but respect user saved choice if explicit
+                setTheme(savedState.theme ?? 'dark'); 
                 setUploadedImages(savedState.uploadedImages ?? []);
                 setStickerType(savedState.stickerType ?? 'static');
                 setSelectedStyleIds(savedState.selectedStyleIds ?? ['anime']);
@@ -183,7 +212,13 @@ function App() {
 
     // Theme toggle effect
     useEffect(() => {
-        document.documentElement.setAttribute('data-theme', theme);
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
     }, [theme]);
 
     const handleThemeToggle = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
@@ -191,7 +226,6 @@ function App() {
         const newLang = language === 'zh-Hant' ? 'en' : (language === 'en' ? 'ja' : 'zh-Hant');
         setLanguage(newLang);
         setT(newLang);
-        // Reset assistant messages for new language
         setAssistantMessages([]);
     };
 
@@ -311,8 +345,6 @@ function App() {
 
     const regenerateAllStickers = async () => {
         const stickersToRegenerate = generatedStickers.filter(s => s.displaySrc);
-        // FIX: Explicitly typing the `sticker` parameter as `GeneratedSticker` fixes a type inference issue
-        // where it was incorrectly inferred as `unknown`, causing errors when accessing `sticker.id` and `sticker.prompt`.
         await processConcurrently(stickersToRegenerate, (sticker: GeneratedSticker) => regenerateSticker(sticker.id, sticker.prompt), 8);
     };
     
@@ -372,27 +404,20 @@ function App() {
                 ? [3, 4, 5]
                 : [styleStrength - 1, styleStrength, styleStrength + 1];
 
-            const poses = [
-                'a neutral standing pose',
-                'a character looking forward with a gentle smile',
-                'a character in a simple, iconic pose that captures their personality'
-            ];
+            // Strict Three-View Pose for Preview
+            const threeViewPose = 'character reference sheet, three views: front, side, back, full body, standing';
             
-            const threeViewPose = 'reference sheet showing the character in three views: front, side, and back';
-
             const previewPromises = selectedStyleIds.length > 1
-                // For multiple styles, generate one preview per style
-                ? selectedStyleIds.map((styleId, index) => {
+                ? selectedStyleIds.map((styleId) => {
                     const shouldUseThreeView = !NO_THREE_VIEW_STYLES.includes(styleId) && styleId !== 'original';
-                    const pose = shouldUseThreeView ? threeViewPose : poses[index % poses.length];
+                    const pose = shouldUseThreeView ? threeViewPose : 'a neutral standing pose, full body';
                     const prompt = createEnhancedPrompt({ base: pose, memeText: '' }, [styleId], textMode, langForPrompt, characterDescription, outlineStyle, stickerType, styleStrength);
                     return geminiService.generateImage(prompt, uploadedImages);
                 })
-                // For a single style, generate strength variations
-                : strengths.map((strength, index) => {
+                : strengths.map((strength) => {
                     const styleId = selectedStyleIds[0];
                     const shouldUseThreeView = !NO_THREE_VIEW_STYLES.includes(styleId) && styleId !== 'original';
-                    const pose = shouldUseThreeView ? threeViewPose : poses[index % poses.length];
+                    const pose = shouldUseThreeView ? threeViewPose : 'a neutral standing pose, full body';
                     const prompt = createEnhancedPrompt({ base: pose, memeText: '' }, selectedStyleIds, textMode, langForPrompt, characterDescription, outlineStyle, stickerType, strength);
                     return geminiService.generateImage(prompt, uploadedImages);
                 });
@@ -439,7 +464,9 @@ function App() {
             
             const lastStyle = selectedStyleIds[selectedStyleIds.length - 1];
             const shouldUseThreeView = !NO_THREE_VIEW_STYLES.includes(lastStyle) && lastStyle !== 'original';
-            const pose = shouldUseThreeView ? 'reference sheet showing the character in three views: front, side, and back' : 'a neutral standing pose';
+            const pose = shouldUseThreeView 
+                ? 'character reference sheet, three views: front, side, back, full body, standing' 
+                : 'a neutral standing pose, full body';
             
             const prompt = createEnhancedPrompt({ base: pose, memeText: '' }, selectedStyleIds, textMode, langForPrompt, characterDescription, outlineStyle, stickerType, styleStrength);
             const image = await geminiService.generateImage(prompt, uploadedImages);
@@ -476,7 +503,6 @@ function App() {
 
             const storeInfo = await geminiService.generateStoreInfo(stickerTheme, ideaTexts, langForPrompt);
             
-            // Explicit type declaration to avoid implicit any[] error
             const updatedStickersWithHashtags: GeneratedSticker[] = [];
             for (const sticker of successfulStickers) {
                 let currentSticker = sticker;
@@ -518,7 +544,7 @@ function App() {
         if (!regenerateConfirm) return;
     
         const { type, stickerId, prompt } = regenerateConfirm;
-        setRegenerateConfirm(null); // Close modal immediately
+        setRegenerateConfirm(null);
     
         if (type === 'single' && stickerId && prompt) {
             await regenerateSticker(stickerId, prompt);
@@ -530,15 +556,11 @@ function App() {
 
     // Main effect for view transitions
     useEffect(() => {
-        // If it's the first render, do nothing.
-        // The loading effect handles the initial state from localStorage.
         if (isInitialRender.current) {
             isInitialRender.current = false;
             return;
         }
         
-        // On subsequent changes, if we navigate to the upload_style view,
-        // it's an intentional full reset (e.g., from the "Create Another" button).
         if (currentView === 'upload_style') {
             setStickerIdeas([]);
             setGeneratedStickers([]);
@@ -552,7 +574,6 @@ function App() {
             setIncludedStickerIds([]);
             setMainStickerId(null);
             setTabStickerId(null);
-            // Clear saved progress on a full reset
             localStorage.removeItem(LOCAL_STORAGE_KEY);
         }
     }, [currentView]);
@@ -575,61 +596,76 @@ function App() {
     };
 
     return (
-        <div className="min-h-screen font-sans antialiased" style={{ backgroundColor: 'var(--bg-color)', color: 'var(--text-color)' }}>
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-                <Header t={t} currentView={currentView} theme={theme} language={language} handleThemeToggle={handleThemeToggle} handleLanguageToggle={handleLanguageToggle} error={error} isLoading={isLoading} loadingMessage={loadingMessage} showLoadingOverlay={showLoadingOverlay} />
-                <main>
-                    {renderView()}
-                </main>
-                {showLoadingOverlay && <LoadingOverlay t={t} loadingMessage={loadingMessage} />}
-                {editingSticker && <ImageEditModal t={t} editingSticker={editingSticker} onClose={() => setEditingSticker(null)} onSave={handleSaveEditedImage} />}
-                {editingIdea && (
-                    <IdeaEditModal
-                        t={t}
-                        editingIdea={editingIdea}
-                        onClose={() => setEditingIdea(null)}
-                        onSave={handleUpdateIdeaAndRegenerateAndCloseModal}
-                    />
-                )}
-                {isCameraOpen && <CameraModal t={t} onClose={() => setIsCameraOpen(false)} onCapture={handleCaptureImage} />}
-                {showPreviewSelectionModal && (
-                    <PreviewSelectionModal
-                        t={t}
-                        candidates={stylePreviewCandidates}
-                        onSelect={handleSelectStylePreview}
-                        onClose={() => setShowPreviewSelectionModal(false)}
-                    />
-                )}
-                {regenerateConfirm && (
-                    <ConfirmationModal
-                        t={t}
-                        title={t(regenerateConfirm.type === 'single' ? 'regenerateConfirmTitle' : 'regenerateAllConfirmTitle')}
-                        message={t(regenerateConfirm.type === 'single' ? 'regenerateConfirmText' : 'regenerateAllConfirmText')}
-                        confirmText={t(regenerateConfirm.type === 'single' ? 'regenerateConfirmAction' : 'regenerateAllConfirmAction')}
-                        onConfirm={handleRegenerate}
-                        onClose={() => setRegenerateConfirm(null)}
-                    />
-                )}
-            </div>
-            
-            <button
-                onClick={() => setIsAssistantOpen(true)}
-                title={t('talkToAssistant')}
-                className="fixed bottom-6 right-6 w-16 h-16 rounded-full btn-primary text-white flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform z-40"
-            >
-                <SparklesIcon />
-            </button>
+        <>
+            <BackgroundBubbles />
+            {!hasStarted ? (
+                <LandingPage onEnterApp={() => setHasStarted(true)} />
+            ) : (
+                <div className="relative z-10 flex flex-col min-h-screen animate-fade-in-up">
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex-1 flex flex-col">
+                        <Header t={t} currentView={currentView} theme={theme} language={language} handleThemeToggle={handleThemeToggle} handleLanguageToggle={handleLanguageToggle} error={error} isLoading={isLoading} loadingMessage={loadingMessage} showLoadingOverlay={showLoadingOverlay} />
+                        <main className="flex-1 flex flex-col relative">
+                             <div key={currentView} className="animate-step-enter h-full flex flex-col">
+                                {renderView()}
+                            </div>
+                        </main>
+                    </div>
+                    
+                    {showLoadingOverlay && <LoadingOverlay t={t} loadingMessage={loadingMessage} />}
+                    {editingSticker && <ImageEditModal t={t} editingSticker={editingSticker} onClose={() => setEditingSticker(null)} onSave={handleSaveEditedImage} />}
+                    {editingIdea && (
+                        <IdeaEditModal
+                            t={t}
+                            editingIdea={editingIdea}
+                            onClose={() => setEditingIdea(null)}
+                            onSave={handleUpdateIdeaAndRegenerateAndCloseModal}
+                        />
+                    )}
+                    {isCameraOpen && <CameraModal t={t} onClose={() => setIsCameraOpen(false)} onCapture={handleCaptureImage} />}
+                    {showPreviewSelectionModal && (
+                        <PreviewSelectionModal
+                            t={t}
+                            candidates={stylePreviewCandidates}
+                            onSelect={handleSelectStylePreview}
+                            onClose={() => setShowPreviewSelectionModal(false)}
+                        />
+                    )}
+                    {regenerateConfirm && (
+                        <ConfirmationModal
+                            t={t}
+                            title={t(regenerateConfirm.type === 'single' ? 'regenerateConfirmTitle' : 'regenerateAllConfirmTitle')}
+                            message={t(regenerateConfirm.type === 'single' ? 'regenerateConfirmText' : 'regenerateAllConfirmText')}
+                            confirmText={t(regenerateConfirm.type === 'single' ? 'regenerateConfirmAction' : 'regenerateAllConfirmAction')}
+                            onConfirm={handleRegenerate}
+                            onClose={() => setRegenerateConfirm(null)}
+                        />
+                    )}
+                    
+                    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-center gap-2 group cursor-pointer" onClick={() => setIsAssistantOpen(true)}>
+                        <div 
+                            className="w-14 h-14 rounded-full border-2 border-primary shadow-lg shadow-primary/20 transform group-hover:scale-110 transition-transform overflow-hidden bg-white"
+                            title={t('talkToAssistant')}
+                        >
+                            <img 
+                                src="https://i.pinimg.com/736x/6a/44/19/6a441990475e6671eea58988e4642606.jpg" 
+                                alt={t('assistantLabel')} 
+                                className="w-full h-full object-cover"
+                            />
+                        </div>
+                    </div>
 
-            <AssistantModal
-                t={t}
-                isOpen={isAssistantOpen}
-                onClose={() => setIsAssistantOpen(false)}
-                language={language}
-                messages={assistantMessages}
-                onSendMessage={handleSendAssistantMessage}
-                isLoading={isAssistantLoading}
-            />
-        </div>
+                    <AssistantModal
+                        t={t}
+                        isOpen={isAssistantOpen}
+                        onClose={() => setIsAssistantOpen(false)}
+                        language={language}
+                        messages={assistantMessages}
+                        onSendMessage={handleSendAssistantMessage}
+                        isLoading={isAssistantLoading}
+                    />
+                </div>
+            )}
+        </>
     );
 }
 

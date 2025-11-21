@@ -113,7 +113,7 @@ const Step4Export: React.FC<Step4Props> = (props) => {
     return (
         <div className="container mx-auto max-w-5xl p-4 sm:p-6 lg:p-8">
             <header className="mb-8">
-                <h1 className="text-3xl font-bold text-green-500">{t('step4Title')}</h1>
+                <h1 className="text-3xl font-bold text-green-500 dark:text-primary">{t('step4Title')}</h1>
                 <p className="mt-2" style={{ color: 'var(--text-muted-color)' }}>{t('step4Desc1')}</p>
                 <ul className="mt-2 list-disc list-inside space-y-1" style={{ color: 'var(--text-muted-color)' }}>
                     <li><span className="font-semibold" style={{ color: 'var(--text-color)' }}>{t('main')}:</span> {t('step4DescMain')}</li>
@@ -156,7 +156,13 @@ const Step4Export: React.FC<Step4Props> = (props) => {
                             const isIncluded = includedStickerIds.includes(sticker.id);
                             return (
                                 <div key={sticker.id} className={`relative transition-opacity ${isIncluded ? 'opacity-100' : 'opacity-60 hover:opacity-100'}`}>
-                                    <input id={`include-${sticker.id}`} checked={isIncluded} onChange={e => handleIncludeChange(sticker.id, e.target.checked)} className="form-checkbox h-5 w-5 rounded absolute -top-2 -left-2 z-10" type="checkbox"/>
+                                    <input 
+                                        id={`include-${sticker.id}`} 
+                                        checked={isIncluded} 
+                                        onChange={e => handleIncludeChange(sticker.id, e.target.checked)} 
+                                        className="form-checkbox h-6 w-6 rounded-md border-2 border-gray-300 dark:border-white/70 bg-white dark:bg-gray-800 text-primary checked:bg-primary checked:border-transparent focus:ring-offset-0 focus:ring-primary absolute top-3 left-3 z-10 transition-all cursor-pointer shadow-md" 
+                                        type="checkbox"
+                                    />
                                     <div className="rounded-lg border overflow-hidden flex flex-col h-full" style={{ backgroundColor: 'var(--card-bg-color)', borderColor: 'var(--card-border-color)' }}>
                                         <div className="p-4">
                                             <p className="text-sm h-16 text-justify overflow-hidden" style={{ color: 'var(--text-muted-color)' }}>{idea?.text}</p>

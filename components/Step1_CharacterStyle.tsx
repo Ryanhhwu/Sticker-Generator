@@ -163,7 +163,7 @@ const Step1CharacterStyle: React.FC<Step1Props> = (props) => {
 
     return (
         <div className="w-full max-w-7xl p-6 sm:p-8 rounded-3xl shadow-xl border mx-auto" style={{ backgroundColor: 'var(--card-bg-color)', borderColor: 'var(--card-border-color)', backdropFilter: 'blur(10px)' }}>
-            <h2 className="text-2xl font-bold mb-6 text-green-600 flex items-center gap-2">{t('step1Title')}</h2>
+            <h2 className="text-2xl font-bold mb-6 text-green-600 dark:text-primary flex items-center gap-2">{t('step1Title')}</h2>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="flex flex-col lg:col-span-1">
                     <h3 className="text-lg font-semibold mb-3 text-center">{t('characterReference')}</h3>
@@ -231,7 +231,7 @@ const Step1CharacterStyle: React.FC<Step1Props> = (props) => {
                         {isAdvancedOpen && (
                              <div className="mt-2">
                                 <label htmlFor="character-description" className="block text-base font-medium mb-2">{t('characterNotes')}</label>
-                                <textarea id="character-description" value={characterDescription} onChange={(e) => setCharacterDescription(e.target.value)} placeholder={t('characterNotesPlaceholder')} className="w-full border rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-green-400 text-base" rows={3} style={{ backgroundColor: 'var(--input-bg-color)', borderColor: 'var(--input-border-color)', color: 'var(--text-color)' }} />
+                                <textarea id="character-description" value={characterDescription} onChange={(e) => setCharacterDescription(e.target.value)} placeholder={t('characterNotesPlaceholder')} className="w-full border rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-green-400 text-base text-gray-900 dark:text-white" rows={3} style={{ backgroundColor: 'var(--input-bg-color)', borderColor: 'var(--input-border-color)' }} />
                             </div>
                         )}
                     </div>
@@ -301,7 +301,7 @@ const Step1CharacterStyle: React.FC<Step1Props> = (props) => {
                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div>
                             <label htmlFor="sticker-count" className="block text-base font-medium mb-2">{t('stickerCount')}</label>
-                            <select id="sticker-count" value={stickerCount} onChange={(e) => setStickerCount(Number(e.target.value))} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-400 text-base" style={{ backgroundColor: 'var(--input-bg-color)', borderColor: 'var(--input-border-color)' }}>
+                            <select id="sticker-count" value={stickerCount} onChange={(e) => setStickerCount(Number(e.target.value))} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-400 text-base text-gray-900 dark:text-white" style={{ backgroundColor: 'var(--input-bg-color)', borderColor: 'var(--input-border-color)' }}>
                                 {(STICKER_SPECS[stickerType]?.countOptions || []).map((c: number) => {
                                     let label = `${c} ${t('stickerUnit')}`;
                                     if (c === 2 && (stickerType === 'static' || stickerType === 'emoji')) {
@@ -329,7 +329,7 @@ const Step1CharacterStyle: React.FC<Step1Props> = (props) => {
                              {textMode === 'with_text' && (
                                 <div className="mt-4">
                                     <label htmlFor="text-language" className="block text-base font-medium mb-2">{t('textLanguage')}</label>
-                                    <select id="text-language" value={textLanguage} onChange={(e) => setTextLanguage(e.target.value)} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-400 text-base" style={{ backgroundColor: 'var(--input-bg-color)', borderColor: 'var(--input-border-color)', color: 'var(--text-color)' }}>
+                                    <select id="text-language" value={textLanguage} onChange={(e) => setTextLanguage(e.target.value)} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-400 text-base text-gray-900 dark:text-white" style={{ backgroundColor: 'var(--input-bg-color)', borderColor: 'var(--input-border-color)' }}>
                                         {TEXT_LANGUAGE_OPTIONS_I18N[language].map(opt => (
                                             <option key={opt.id} value={opt.id}>{opt.label}</option>
                                         ))}

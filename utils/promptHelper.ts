@@ -97,7 +97,7 @@ export const createEnhancedPrompt = (
     if (stickerType === 'emoji') {
         compositionInstruction = `**Composition:** ZOOM IN CLOSE-UP. Focus primarily on the face and expression. Minimal background. High readability at small sizes.`;
     } else if (isThreeView) {
-        compositionInstruction = `**Composition:** Character Reference Sheet. Front, Side, and Back views arranged horizontally. Neutral pose.`;
+        compositionInstruction = `**Composition:** Character Reference Sheet. Front, Side, and Back views arranged horizontally. Neutral pose. FULL BODY VISIBILITY. Ensure distinct separation between views.`;
     }
 
     // Incorporating the "Universal Core Logic" for segmentation

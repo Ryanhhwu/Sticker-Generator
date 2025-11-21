@@ -1,154 +1,203 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 貼圖工作室</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
+    <title>STICKER STUDIO</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,container-queries"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#13ec80",
+              "primary-dim": "#0fb360",
+              "background-light": "#f6f8f7",
+              "background-dark": "#102219",
+              "panel-dark": "#1a3326",
+            },
+            fontFamily: {
+              "display": ["Manrope", "Noto Sans TC", "sans-serif"],
+              "sans": ["Noto Sans TC", "Manrope", "sans-serif"],
+            },
+            animation: {
+                'float-up': 'floatUp 3s ease-in-out infinite',
+                'spin-slow': 'spin 8s linear infinite',
+            }
+          },
+        },
+      }
+    </script>
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+        /* 全局字體設定 */
+        body {
+            font-family: 'Noto Sans TC', 'Manrope', sans-serif;
+            transition: background-color 0.5s ease, color 0.5s ease;
+            overflow-x: hidden;
+        }
+
+        /* 氣泡背景動畫 */
+        .bubble-background {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            overflow: hidden;
+            z-index: 0;
+            pointer-events: none; 
+        }
+        .bubble {
+            position: absolute;
+            bottom: -150px;
+            border-radius: 50%;
+            animation: rise 25s infinite ease-in;
+            backdrop-filter: blur(2px);
+            transition: background-color 0.5s ease, box-shadow 0.5s ease, border-color 0.5s ease;
+        }
+
+        /* Light Mode Bubbles */
+        html:not(.dark) .bubble {
+             background-color: rgba(19, 236, 128, 0.15);
+             border: 1px solid rgba(19, 236, 128, 0.3);
+        }
+
+        /* Dark Mode Bubbles: Increased opacity and visibility */
+        html.dark .bubble {
+             background-color: rgba(19, 236, 128, 0.35);
+             box-shadow: 0 0 30px rgba(19, 236, 128, 0.4);
+             border: 1px solid rgba(19, 236, 128, 0.3);
+        }
+
+        /* 氣泡參數 */
+        .bubble:nth-child(1) { left: 10%; width: 80px; height: 80px; animation-duration: 22s; animation-delay: 0s; }
+        .bubble:nth-child(2) { left: 20%; width: 40px; height: 40px; animation-duration: 29s; animation-delay: 2s; }
+        .bubble:nth-child(3) { left: 35%; width: 100px; height: 100px; animation-duration: 24s; animation-delay: 4s; }
+        .bubble:nth-child(4) { left: 50%; width: 60px; height: 60px; animation-duration: 32s; animation-delay: 0s; }
+        .bubble:nth-child(5) { left: 65%; width: 120px; height: 120px; animation-duration: 35s; animation-delay: 1s; }
+        .bubble:nth-child(6) { left: 75%; width: 50px; height: 50px; animation-duration: 26s; animation-delay: 3s; }
+        .bubble:nth-child(7) { left: 90%; width: 90px; height: 90px; animation-duration: 28s; animation-delay: 5s; }
+
+        @keyframes rise {
+            0% { transform: translateY(0) scale(1); opacity: 0; }
+            20% { opacity: 1; }
+            100% { transform: translateY(-120vh) scale(1.2); opacity: 0; }
+        }
+
+        /* Step Transition Animations */
+        @keyframes stepEnter {
+            0% {
+                opacity: 0;
+                transform: translateY(20px) scale(0.98);
+                filter: blur(8px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                filter: blur(0);
+            }
+        }
         
-        html[data-theme='light'] {
-            --bg-color: #F4FBF7;
+        .animate-step-enter {
+            animation: stepEnter 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        /* Intro Animations */
+        .intro-text-1 {
+            animation: introSequence1 3.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            opacity: 0;
+        }
+        .intro-text-2 {
+            animation: introSequence2 3.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            opacity: 0;
+            animation-delay: 3.2s; 
+        }
+        .main-content-reveal {
+            animation: finalReveal 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+            opacity: 0;
+            transform: translateY(20px);
+            animation-delay: 6.5s; 
+        }
+        .btn-reveal {
+            opacity: 0; 
+            animation: expandFadeIn 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation-delay: 8s; 
+        }
+
+        @keyframes introSequence1 {
+            0% { opacity: 0; transform: translateY(20px) scale(0.95); filter: blur(10px); }
+            30% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+            70% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+            100% { opacity: 0; transform: translateY(-20px) scale(1.05); filter: blur(10px); pointer-events: none; }
+        }
+        @keyframes introSequence2 {
+            0% { opacity: 0; transform: translateY(20px); filter: blur(10px); }
+            30% { opacity: 1; transform: translateY(0); filter: blur(0); }
+            70% { opacity: 1; transform: translateY(0); filter: blur(0); }
+            100% { opacity: 0; transform: translateY(-20px); filter: blur(10px); pointer-events: none; }
+        }
+        @keyframes finalReveal {
+            0% { opacity: 0; transform: translateY(30px); filter: blur(5px); }
+            100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+        @keyframes expandFadeIn {
+            0% { opacity: 0; clip-path: inset(0 50% 0 50%); transform: translateY(10px); }
+            100% { opacity: 1; clip-path: inset(0 0 0 0); transform: translateY(0); }
+        }
+
+        /* Editor Entry Animation */
+        .fade-out-scale {
+            animation: fadeOutScale 1.2s cubic-bezier(0.7, 0, 0.3, 1) forwards;
+        }
+        @keyframes fadeOutScale {
+            0% { opacity: 1; transform: scale(1); filter: blur(0); }
+            100% { opacity: 0; transform: scale(1.1); filter: blur(10px); pointer-events: none; }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+        @keyframes fadeInUp {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Tooltip/Hover effects */
+        .tool-btn:hover .tooltip { opacity: 1; transform: translateX(8px); }
+
+        /* Base Variables mapping for JS components */
+        :root {
+            --primary-color: #13ec80;
+            --bg-color: #f6f8f7;
             --text-color: #1f2937;
-            --text-muted-color: #4b5563;
-            --card-bg-color: rgba(255, 255, 255, 0.8);
+            --text-muted-color: #6b7280;
+            --card-bg-color: rgba(255, 255, 255, 0.9); /* Semi-transparent light */
             --card-border-color: #e5e7eb;
             --input-bg-color: #ffffff;
             --input-border-color: #d1d5db;
-            --header-text-from: #1f2937;
-            --header-text-to: #374151;
+            --card-hover-bg: #f9fafb;
             --btn-secondary-bg: #e5e7eb;
             --btn-secondary-text: #374151;
-            --btn-secondary-hover-bg: #d1d5db;
-            --card-hover-bg: #f9fafb;
         }
 
-        html[data-theme='dark'] {
-            --bg-color: #111827;
+        html.dark {
+            --bg-color: #102219;
             --text-color: #f3f4f6;
-            --text-muted-color: #9ca3af;
-            --card-bg-color: rgba(31, 41, 55, 0.7);
-            --card-border-color: #374151;
-            --input-bg-color: #374151;
-            --input-border-color: #4b5563;
-            --header-text-from: #ffffff;
-            --header-text-to: #d1d5db;
-            --btn-secondary-bg: #4b5563;
+            --text-muted-color: rgba(255, 255, 255, 0.6);
+            --card-bg-color: rgba(26, 51, 38, 0.7); /* Transparent dark to show bubbles */
+            --card-border-color: rgba(255, 255, 255, 0.1);
+            --input-bg-color: rgba(0, 0, 0, 0.3);
+            --input-border-color: rgba(255, 255, 255, 0.15);
+            --card-hover-bg: rgba(255, 255, 255, 0.05);
+            --btn-secondary-bg: rgba(255, 255, 255, 0.1);
             --btn-secondary-text: #ffffff;
-            --btn-secondary-hover-bg: #6b7280;
-            --card-hover-bg: #374151;
-        }
-
-        body { 
-            font-family: 'Noto Sans TC', 'Noto Sans JP', sans-serif; 
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            transition: background-color 0.3s ease, color 0.3s ease;
-        }
-        .aurora-bg { 
-            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(130, 230, 150, 0.2), transparent), 
-                              radial-gradient(ellipse 80% 50% at 50% 120%, rgba(100, 210, 130, 0.2), transparent); 
-        }
-        .style-card-active {
-            border-color: #34D399 !important;
-            box-shadow: 0 0 15px rgba(52, 211, 153, 0.4);
-        }
-        .style-grid::-webkit-scrollbar { width: 8px; }
-        .style-grid::-webkit-scrollbar-track { background: var(--btn-secondary-bg); border-radius: 10px; }
-        .style-grid::-webkit-scrollbar-thumb { background: #34D399; border-radius: 10px; }
-        .style-grid::-webkit-scrollbar-thumb:hover { background: #34d399; }
-
-        .btn-primary {
-            background-image: linear-gradient(to right, #34D399, #22C55E);
-            color: white;
-            font-weight: 700;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 10px rgba(52, 211, 153, 0.3);
-        }
-        .btn-primary:hover:not(:disabled) {
-            background-image: linear-gradient(to right, #4ADE80, #34d399);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(52, 211, 153, 0.5);
-        }
-        .btn-primary:disabled {
-            background-image: none;
-            background-color: #9ca3af;
-            color: #e5e7eb;
-            cursor: not-allowed;
-            opacity: 0.7;
-            box-shadow: none;
         }
         
-        .btn-secondary {
-            background-color: var(--btn-secondary-bg);
-            color: var(--btn-secondary-text);
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-        .btn-secondary:hover:not(:disabled) {
-            background-color: var(--btn-secondary-hover-bg);
-            transform: translateY(-1px);
-        }
-
-        .radio-selected {
-            background-image: linear-gradient(to bottom right, #34D399, #22C55E) !important;
-            color: white !important;
-            border-color: #34D399 !important;
-            box-shadow: 0 2px 8px rgba(52, 211, 153, 0.3);
-        }
-
-        .form-checkbox, .form-radio {
-            -webkit-appearance: none; -moz-appearance: none; appearance: none;
-            border-width: 2px; padding: 0;
-            display: inline-block; vertical-align: middle; background-origin: border-box;
-            user-select: none;
-            flex-shrink: 0; color: #34D399;
-            background-color: var(--input-bg-color); border-color: var(--input-border-color);
-        }
-        .form-checkbox { border-radius: 0.375rem; height: 1.25rem; width: 1.25rem; }
-        .form-radio { border-radius: 9999px; height: 1rem; width: 1rem; }
-        
-        .form-checkbox:checked, .form-radio:checked {
-            border-color: transparent; background-color: currentColor;
-            background-size: 100% 100%; background-position: center; background-repeat: no-repeat;
-        }
-        .form-checkbox:checked {
-            background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
-        }
-        .form-radio:checked {
-            background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3ccircle cx='8' cy='8' r='3'/%3e%3c/svg%3e");
-        }
-        .form-checkbox:focus, .form-radio:focus, input:focus, textarea:focus {
-            --tw-ring-color: rgba(52, 211, 153, 0.5);
-             border-color: #34D399;
-        }
-        
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            background: #34D399;
-            cursor: pointer;
-            border-radius: 50%;
-            border: 2px solid white;
-            box-shadow: 0 0 5px rgba(0,0,0,0.2);
-            margin-top: -8px; /* Centers thumb on track */
-        }
-
-        input[type=range]::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            background: #34D399;
-            cursor: pointer;
-            border-radius: 50%;
-            border: 2px solid white;
-            box-shadow: 0 0 5px rgba(0,0,0,0.2);
-        }
-
+        /* Marquee */
         @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         .marquee-container { display: flex; width: 200%; animation: scroll 60s linear infinite; }
         .marquee-container:hover { animation-play-state: paused; }
@@ -156,29 +205,87 @@
             flex-shrink: 0; padding: 8px 16px; margin: 0 8px;
             background-color: var(--btn-secondary-bg); color: var(--btn-secondary-text);
             border-radius: 9999px; cursor: pointer; transition: all 0.2s ease; font-size: 0.875rem;
+            border: 1px solid var(--card-border-color);
         }
-        html[data-theme='dark'] .marquee-item { background-color: #374151; color: #E5E7EB; }
-        .marquee-item:hover { background-color: #34D399; color: white; transform: translateY(-2px); }
+        .marquee-item:hover { background-color: var(--primary-color); color: #102219; transform: translateY(-2px); border-color: var(--primary-color); }
+
+        /* Override range input for green theme */
+        input[type=range]::-webkit-slider-thumb {
+            background: var(--primary-color);
+            border: 2px solid #102219;
+        }
+        input[type=range]::-moz-range-thumb {
+            background: var(--primary-color);
+            border: 2px solid #102219;
+        }
+        
+        /* Ensure form elements use theme colors globally */
+        input, select, textarea {
+            color: var(--text-color) !important;
+            background-color: var(--input-bg-color);
+            border-color: var(--input-border-color);
+        }
+        input::placeholder, textarea::placeholder {
+            color: var(--text-muted-color);
+            opacity: 0.7;
+        }
+        
+        .btn-primary {
+            background: var(--primary-color);
+            color: #102219;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: #34fa95;
+            transform: translateY(-1px);
+            box-shadow: 0 0 25px rgba(19, 236, 128, 0.4);
+        }
+        .btn-primary:disabled {
+            background: #374151;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background-color: var(--btn-secondary-bg);
+            color: var(--btn-secondary-text);
+        }
+        
+        .style-card-active {
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 0 15px rgba(19, 236, 128, 0.3);
+            background-color: rgba(19, 236, 128, 0.05) !important;
+        }
+        
+        /* Form Elements */
+        .form-checkbox, .form-radio {
+            color: var(--primary-color);
+            border-color: var(--input-border-color);
+            background-color: var(--input-bg-color);
+        }
+        .form-checkbox:checked, .form-radio:checked {
+            background-color: var(--primary-color);
+            border-color: transparent;
+        }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "uuid": "https://aistudiocdn.com/uuid@^13.0.0",
-    "jszip": "https://aistudiocdn.com/jszip@^3.10.1",
-    "file-saver": "https://aistudiocdn.com/file-saver@^2.0.5",
-    "vite": "https://aistudiocdn.com/vite@^7.2.4",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
-  }
-}
-</script>
+    <script type="importmap">
+    {
+      "imports": {
+        "file-saver": "https://aistudiocdn.com/file-saver@^2.0.5",
+        "jszip": "https://aistudiocdn.com/jszip@^3.10.1",
+        "react/": "https://aistudiocdn.com/react@^19.2.0/",
+        "react": "https://aistudiocdn.com/react@^19.2.0",
+        "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+        "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+        "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+        "uuid": "https://aistudiocdn.com/uuid@^13.0.0",
+        "vite": "https://aistudiocdn.com/vite@^7.2.4"
+      }
+    }
+    </script>
 </head>
-<body class="antialiased">
-    <div class="fixed top-0 left-0 w-full h-full aurora-bg opacity-50 z-0"></div>
-    <div id="root" class="relative z-10"></div>
+<body class="antialiased bg-background-light dark:bg-background-dark text-gray-900 dark:text-white transition-colors duration-500">
+    <div id="root" class="relative min-h-screen flex flex-col overflow-hidden"></div>
     <script type="module" src="/index.tsx"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+
+import React from 'react';
 import { Language, Theme, View } from '../types';
-// FIX: Corrected import path.
 import { GlobeIcon, MoonIcon, SunIcon } from './icons/Icons';
 
 interface HeaderProps {
@@ -27,63 +27,54 @@ const Header: React.FC<HeaderProps> = ({
     loadingMessage,
     showLoadingOverlay
 }) => {
-    const slogans = t('slogans').split('|');
-    const [sloganIndex, setSloganIndex] = useState(0);
-    const [sloganOpacity, setSloganOpacity] = useState(1);
-
-    useEffect(() => {
-        if (slogans.length <= 1) return;
-
-        const interval = setInterval(() => {
-            setSloganOpacity(0);
-            setTimeout(() => {
-                setSloganIndex(prev => (prev + 1) % slogans.length);
-                setSloganOpacity(1);
-            }, 500); // match transition duration
-        }, 5000); // Change slogan every 5 seconds
-
-        return () => clearInterval(interval);
-    }, [slogans.length]);
-
     return (
-        <header className="mb-8 sm:mb-12 w-full text-center sm:relative">
-            {/* Buttons container: a flex row on mobile, becomes an absolute overlay on sm+ */}
-            <div className="flex justify-between items-center mb-4 sm:mb-0 sm:absolute sm:inset-0 sm:pointer-events-none">
-                <div className="sm:absolute sm:top-0 sm:left-4 sm:left-6 sm:pointer-events-auto">
-                    {currentView === 'upload_style' ? (
-                        <button onClick={handleLanguageToggle} title={t('langToggle')} className="p-2 rounded-full transition-colors" style={{ color: 'var(--text-muted-color)', backgroundColor: 'var(--btn-secondary-bg)' }}>
-                            <GlobeIcon />
-                        </button>
-                    ) : (
-                        // Placeholder to maintain layout on mobile when lang button is hidden
-                        <div className="w-10 h-10 sm:hidden" />
-                    )}
+        <header className="h-16 w-full flex items-center justify-between px-4 sm:px-6 mb-6 rounded-2xl border border-gray-200 dark:border-white/5 bg-white/30 dark:bg-background-dark/80 backdrop-blur-md z-20 shadow-sm transition-colors duration-500">
+            <div className="flex items-center gap-4">
+                 <div className="text-primary">
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor"></path>
+                    </svg>
                 </div>
-                <div className="sm:absolute sm:top-0 sm:right-4 sm:right-6 sm:pointer-events-auto">
-                    <button onClick={handleThemeToggle} title={theme === 'dark' ? t('themeToggleLight') : t('themeToggleDark')} className="p-2 rounded-full transition-colors" style={{ color: 'var(--text-muted-color)', backgroundColor: 'var(--btn-secondary-bg)' }}>
-                        {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-                    </button>
-                </div>
+                <span className="text-gray-300 dark:text-white/40 text-sm">/</span>
+                <h1 className="text-gray-800 dark:text-white text-lg font-bold tracking-wide font-display">
+                    STICKER <span className="text-primary">STUDIO</span>
+                </h1>
+            </div>
+            
+            {/* Central Status / Error Message Area (Visible if there is space) */}
+            <div className="hidden md:flex flex-1 justify-center">
+                 {error && (
+                    <div className="px-3 py-1 bg-red-100 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-200 rounded text-xs flex items-center gap-2">
+                        <span className="material-symbols-outlined text-xs">error</span>
+                        {error}
+                    </div>
+                )}
+                {isLoading && loadingMessage && !showLoadingOverlay && (
+                     <div className="px-3 py-1 bg-primary/10 border border-primary/30 text-primary-dim dark:text-primary rounded text-xs flex items-center gap-2 animate-pulse">
+                        <span className="material-symbols-outlined text-xs">hourglass_empty</span>
+                        {loadingMessage}
+                    </div>
+                )}
             </div>
 
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black bg-clip-text text-transparent bg-gradient-to-b" style={{ color: 'transparent', backgroundImage: 'linear-gradient(to bottom, var(--header-text-from), var(--header-text-to))' }}>
-                <strong className="text-green-500">LINE</strong> {t('appTitle')}
-            </h1>
-            <p className="mt-4 text-lg sm:text-xl h-7" style={{ color: 'var(--text-muted-color)', transition: 'opacity 0.5s ease-in-out', opacity: sloganOpacity }}>
-                {slogans[sloganIndex]}
-            </p>
-            
-            {error && (
-                <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg max-w-lg mx-auto dark:bg-red-900/50 dark:border-red-700 dark:text-red-200">
-                    {error}
-                </div>
-            )}
-            
-            {isLoading && loadingMessage && currentView !== 'results' && !showLoadingOverlay && (
-                 <div className="mt-4 p-3 bg-green-100 border border-green-400 text-green-800 rounded-lg max-w-lg mx-auto dark:bg-green-900/50 dark:border-green-700 dark:text-green-200 animate-pulse">
-                    {loadingMessage}
-                </div>
-            )}
+            <div className="flex items-center gap-4">
+                {currentView === 'upload_style' && (
+                     <button 
+                        onClick={handleLanguageToggle} 
+                        title={t('langToggle')} 
+                        className="text-gray-500 dark:text-white/60 hover:text-gray-900 dark:hover:text-white transition-colors p-2 rounded hover:bg-gray-100 dark:hover:bg-white/5"
+                    >
+                        <GlobeIcon />
+                    </button>
+                )}
+                <button 
+                    onClick={handleThemeToggle} 
+                    title={theme === 'dark' ? t('themeToggleLight') : t('themeToggleDark')} 
+                    className="text-gray-500 dark:text-white/60 hover:text-gray-900 dark:hover:text-white transition-colors p-2 rounded hover:bg-gray-100 dark:hover:bg-white/5"
+                >
+                    {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+                </button>
+            </div>
         </header>
     );
 };

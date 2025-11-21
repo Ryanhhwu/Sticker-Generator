@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { GeneratedSticker, EditingStickerInfo, StickerIdea, EditingIdeaInfo } from '../types';
 import { EditIcon, RefreshIcon, LoadingSpinnerIcon } from './icons/Icons';
@@ -22,7 +21,7 @@ const Step3Results: React.FC<Step3Props> = (props) => {
     return (
         <div className="w-full max-w-7xl p-6 sm:p-8 rounded-3xl shadow-xl border mx-auto" style={{ backgroundColor: 'var(--card-bg-color)', borderColor: 'var(--card-border-color)' }}>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-                <h2 className="text-2xl font-bold text-green-600">{t('step3Title')}</h2>
+                <h2 className="text-2xl font-bold text-green-600 dark:text-primary">{t('step3Title')}</h2>
                 <div className="flex gap-4">
                      <button onClick={() => setCurrentView('ideas')} className="btn-secondary px-4 py-2 rounded-lg">{t('back')}</button>
                      <button onClick={requestRegenerateAll} disabled={isAnyStickerGenerating} className="btn-secondary px-4 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">

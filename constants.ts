@@ -3,6 +3,22 @@ import { StickerType, Language } from './types';
 
 export const MAX_UPLOAD_COUNT = 3;
 
+export const AUDIO_URLS = {
+    // Source: Local files uploaded by user
+    // Please ensure 'intro.mp3' is present in your public/root directory.
+
+    // Intro: Elegant, soft Jazz Piano (No vocals) - "Lounge/Lobby" vibe
+    INTRO_BGM: '/intro.mp3', 
+    
+    // App: "Upbeat" - Cheerful, positive background music
+    // Source: Pixabay (Upbeat / Inspiring) - Matched to user request "Upbeat"
+    APP_BGM: 'https://cdn.pixabay.com/audio/2022/03/09/audio_c8c90e3ca1.mp3', 
+    
+    // SFX: Crisp, magical chime for starting
+    // (Keeping CDN for SFX unless a local 'sfx.mp3' is provided)
+    START_SFX: 'https://cdn.pixabay.com/audio/2021/08/04/audio_350b39b296.mp3', 
+};
+
 export const STICKER_SPECS: Record<string, any> = {
     static: {
         labelKey: 'stickerTypeStatic',

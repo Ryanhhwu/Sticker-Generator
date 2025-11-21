@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { StickerIdea, Language, UploadedImage, StickerType } from '../types';
 import { INSPIRATION_THEMES, TEXT_LANGUAGE_OPTIONS_I18N } from '../constants';
@@ -128,7 +127,7 @@ const Step2ThemeIdeas: React.FC<Step2Props> = (props) => {
 
     return (
         <div className="w-full max-w-7xl p-6 sm:p-8 rounded-3xl shadow-xl border mx-auto" style={{ backgroundColor: 'var(--card-bg-color)', borderColor: 'var(--card-border-color)' }}>
-            <h2 className="text-2xl font-bold mb-6 text-green-600">{t('step2Title')}</h2>
+            <h2 className="text-2xl font-bold mb-6 text-green-600 dark:text-primary">{t('step2Title')}</h2>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-1">
                     <h3 className="text-lg font-semibold mb-3">{t('stylePreview')}</h3>
@@ -175,7 +174,7 @@ const Step2ThemeIdeas: React.FC<Step2Props> = (props) => {
                                 </div>
                             )}
                             <p className="text-center my-2 font-semibold" style={{color: 'var(--text-muted-color)'}}>{t('orEnterTheme')}</p>
-                            <input id="theme-input" type="text" value={stickerTheme} onChange={e => setStickerTheme(e.target.value)} placeholder={t('customThemePlaceholder')} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-400 text-base" style={{ backgroundColor: 'var(--card-bg-color)', borderColor: 'var(--input-border-color)' }} />
+                            <input id="theme-input" type="text" value={stickerTheme} onChange={e => setStickerTheme(e.target.value)} placeholder={t('customThemePlaceholder')} className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-400 text-base" style={{ backgroundColor: 'var(--card-bg-color)', borderColor: 'var(--input-border-color)', color: 'var(--text-color)' }} />
                             <button onClick={handleGenerateIdeas} disabled={isGeneratingIdeas || !stickerTheme.trim()} className="w-full mt-4 py-2 rounded-lg btn-primary text-white flex items-center justify-center gap-2">
                                {isGeneratingIdeas && <LoadingSpinnerIcon className="h-5 w-5"/>}
                                {isGeneratingIdeas ? t('generatingIdeas') : t('generateIdeas')}
@@ -193,6 +192,7 @@ const Step2ThemeIdeas: React.FC<Step2Props> = (props) => {
                                         value={idea.text}
                                         onChange={(e) => handleIdeaTextChange(idea.id, e.target.value)}
                                         className="flex-1 text-base bg-transparent focus:outline-none focus:ring-1 focus:ring-green-500 rounded px-2 py-1"
+                                        style={{ color: 'var(--text-color)' }}
                                     />
                                     <button onClick={() => handleRemoveIdea(idea.id)} className="p-1 text-red-500 hover:text-red-400"><RemoveIcon /></button>
                                 </div>
@@ -202,7 +202,7 @@ const Step2ThemeIdeas: React.FC<Step2Props> = (props) => {
                         <div>
                             <h3 className="text-lg font-semibold mb-2">{t('customIdeas')}</h3>
                             <div className="flex gap-2">
-                                <input type="text" value={customIdeaInput} onChange={e => setCustomIdeaInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddCustomIdea()} placeholder={t('customIdeaPlaceholder')} className="flex-1 border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-400 text-base" style={{ backgroundColor: 'var(--input-bg-color)', borderColor: 'var(--input-border-color)' }} />
+                                <input type="text" value={customIdeaInput} onChange={e => setCustomIdeaInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddCustomIdea()} placeholder={t('customIdeaPlaceholder')} className="flex-1 border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-400 text-base" style={{ backgroundColor: 'var(--input-bg-color)', borderColor: 'var(--input-border-color)', color: 'var(--text-color)' }} />
                                 <button onClick={handleAddCustomIdea} className="p-3 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-colors"><PlusIcon /></button>
                             </div>
                         </div>
