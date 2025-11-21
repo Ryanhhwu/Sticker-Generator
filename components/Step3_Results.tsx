@@ -64,7 +64,7 @@ const Step3Results: React.FC<Step3Props> = (props) => {
                             {idea && (
                                 <p 
                                     onClick={() => !sticker.isGenerating && setEditingIdea({ id: sticker.id, text: idea.text })}
-                                    className="text-sm mb-4" 
+                                    className="text-sm mb-4 text-justify" 
                                     style={{ color: 'var(--text-muted-color)', cursor: sticker.isGenerating ? 'default' : 'pointer', minHeight: '3.5rem' }}
                                     title={t('editIdeaTitle')}
                                 >

@@ -1,3 +1,4 @@
+
 export const toBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -69,43 +70,69 @@ export const removeGreenScreenAndResize = (imageBase64: string, targetWidth: num
 
             const isGreenFlags = new Uint8Array(width * height);
             
+            // Pass 1: Global Green Mask Generation
             for (let i = 0; i < data.length; i += 4) {
                 const r = data[i];
                 const g = data[i + 1];
                 const b = data[i + 2];
                 const index = i / 4;
 
+                // --- White/Outline Protection ---
+                // If a pixel is very bright and has low saturation (White/Grey), preserve it immediately.
+                // This prevents eating into white sticker borders.
+                // L > 0.9 (approx > 230 RGB) and low variance
+                if (r > 230 && g > 230 && b > 230 && Math.abs(r - g) < 20 && Math.abs(r - b) < 20) {
+                    continue; 
+                }
+
+                // --- Green Detection Logic ---
+                
+                // 1. Exact/Fast Green Check (Euclidean distance to pure green)
+                // Target: (0, 255, 0). Dist < 18 is very strict.
                 const dist = Math.sqrt(Math.pow(r - 0, 2) + Math.pow(g - 255, 2) + Math.pow(b - 0, 2));
-                if (dist < 30) {
+                if (dist < 18) {
                     isGreenFlags[index] = 1;
                     continue;
                 }
 
+                // 2. Channel Dominance Check (Crucial)
+                // Green must be significantly higher than Red and Blue
+                if (!(g > r + 12 && g > b + 12)) {
+                    continue; // If not dominant, it's likely part of the subject
+                }
+
+                // 3. Loose HSL Check (for textures/shadows on green screen)
                 const [h, s, l] = rgbToHsl(r, g, b);
-                if (h >= 80 && h <= 160 && s >= 0.3 && l >= 0.2 && g > r && g > b) {
+                
+                // Hue: 60 - 185 (Green range)
+                // Saturation: >= 0.22 (Must have some color)
+                // Lightness: 0.12 - 0.95 (Avoid pure black or pure white, though white is handled above)
+                if (h >= 60 && h <= 185 && s >= 0.22 && l >= 0.12 && l <= 0.95) {
                     isGreenFlags[index] = 1;
                 }
             }
             
-            // This version removes ALL green pixels, including enclosed ones, by using isGreenFlags as the definitive background mask.
-            // This replaces the previous border-based flood fill logic.
+            // Pass 2: Execution, Despill & Feathering
             for (let i = 0; i < data.length; i += 4) {
                 const index = i / 4;
+                
                 if (isGreenFlags[index] === 1) {
-                    data[i + 3] = 0;
+                    data[i + 3] = 0; // Full transparency
                 } else {
+                    // Check for Edges (Neighbors that are marked as background)
                     const x = index % width;
                     const y = Math.floor(index / width);
                     let isEdge = false;
-                    let neighborIsBgCount = 0;
-                    const neighbors = [ [x, y - 1], [x, y + 1], [x - 1, y], [x + 1, y], [x-1, y-1], [x+1, y-1], [x-1, y+1], [x+1, y+1] ];
-                    if (x > 0 && x < width - 1 && y > 0 && y < height - 1) {
-                        for(const [nx, ny] of neighbors) {
-                            const nIndex = ny * width + nx;
-                            if (isGreenFlags[nIndex] === 1) {
-                                isEdge = true;
-                                neighborIsBgCount++;
-                            }
+                    
+                    // Simple 4-neighbor check
+                    const neighbors = [
+                        index - 1, index + 1, index - width, index + width
+                    ];
+
+                    for (const nIdx of neighbors) {
+                        if (nIdx >= 0 && nIdx < isGreenFlags.length && isGreenFlags[nIdx] === 1) {
+                            isEdge = true;
+                            break;
                         }
                     }
 
@@ -113,18 +140,24 @@ export const removeGreenScreenAndResize = (imageBase64: string, targetWidth: num
                         let r = data[i];
                         let g = data[i + 1];
                         let b = data[i + 2];
+
+                        // Despill: If edge pixel is still greenish, neutralize it
                         if (g > r && g > b) {
-                            data[i + 1] = Math.min(g, Math.floor((r + b) * 0.7));
+                            // Replace Green with the average of R and B, or max of R/B to maintain brightness
+                            const replacement = Math.max(r, b);
+                            data[i + 1] = replacement; 
                         }
-                        const featherAmount = 1 - (neighborIsBgCount / 8);
-                        data[i + 3] = Math.min(255, data[i+3] * featherAmount + 64);
+
+                        // Feathering: Soften the alpha of edge pixels
+                        // Instead of hard cut (255), reduce to create a 1px blur effect
+                        data[i + 3] = 180; 
                     }
                 }
             }
 
             sourceCtx.putImageData(imageData, 0, 0);
 
-            // Cropping and resizing logic remains unchanged.
+            // Cropping and resizing logic
             let minX = width, minY = height, maxX = -1, maxY = -1;
             const newData = sourceCtx.getImageData(0, 0, width, height).data;
             for (let y = 0; y < height; y++) {
@@ -173,6 +206,10 @@ export const removeGreenScreenAndResize = (imageBase64: string, targetWidth: num
             const drawX = (targetWidth - drawWidth) / 2;
             const drawY = (targetHeight - drawHeight) / 2;
             
+            // Use high quality image smoothing
+            finalCtx.imageSmoothingEnabled = true;
+            finalCtx.imageSmoothingQuality = 'high';
+
             finalCtx.drawImage(
                 sourceCanvas,
                 minX, minY,

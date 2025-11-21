@@ -155,8 +155,8 @@ const Step2ThemeIdeas: React.FC<Step2Props> = (props) => {
                         <div className="p-4 rounded-lg border" style={{backgroundColor: 'var(--input-bg-color)', borderColor: 'var(--input-border-color)'}}>
                             <label htmlFor="theme-input" className="block text-base font-medium mb-2">{t('selectInspiration')}</label>
                             <p className="text-sm -mt-2 mb-3" style={{ color: 'var(--text-muted-color)'}}>{t('selectInspirationHint')}</p>
-                             <div className="w-full overflow-hidden whitespace-nowrap mb-4">
-                                <div className="marquee-container">
+                             <div className="w-full overflow-x-auto whitespace-nowrap mb-4 no-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                                <div className="marquee-container hover:pause-animation">
                                     {[...INSPIRATION_THEMES[language], ...INSPIRATION_THEMES[language]].map((theme, index) => (
                                         <div key={`${theme}-${index}`} className="marquee-item" onClick={() => setStickerTheme(theme)}>
                                             {theme}

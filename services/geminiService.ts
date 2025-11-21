@@ -91,26 +91,38 @@ export const editImage = async (base64Image: string, prompt: string, originalPro
     const imagePart = fileToGenerativePart(base64Image);
 
     // Extract outline instruction from the original prompt.
-    const outlineMatch = originalPrompt.match(/\*\*Outline:\*\* (.*?)\s*\*\*Composition:\*\*/);
-    const outlineInstruction = outlineMatch ? outlineMatch[1].trim() : 'The final image MUST have a thick, clean, white outline around the character, suitable for a sticker.'; // Default fallback
+    const outlineMatch = originalPrompt.match(/\*\*Outline:\*\* (.*?)\s*\*\*Segmentation Strategy:\*\*/s) || originalPrompt.match(/\*\*Outline:\*\* (.*?)\s*\*\*Composition:\*\*/s);
+    const outlineInstruction = outlineMatch ? outlineMatch[1].trim() : 'The final image MUST have a thick, clean, white outline around the character, suitable for a sticker.'; 
+    
+    // Identify the outline type from the instruction to apply correct segmentation strategy
+    let segmentationStrategy = '';
+    if (outlineInstruction.toLowerCase().includes('white')) {
+        segmentationStrategy = 'Sticker cut. Keep the border. Die-cut style. Treat the white border as part of the subject.';
+    } else if (outlineInstruction.toLowerCase().includes('black')) {
+        segmentationStrategy = 'Include the outline. Keep the stroke. Ensure the complete character silhouette is distinct.';
+    } else {
+        segmentationStrategy = 'Pixel-perfect segmentation. Hard cut only. Do not feather edges.';
+    }
 
     const fullEditPrompt = `
-        You are an AI image editor. The user has provided an image of a character, likely with a transparent background.
-        Your task is to apply a modification to this character while adhering to specific output formats.
+        You are an AI image editor using Semantic Segmentation logic.
+        Your task is to modify the character based on the user's request while precisely isolating the subject.
 
-        **Step 1: Background Placement**
-        Place the provided character onto a pure, solid green background (#00FF00).
+        **Task:**
+        1. **User Modification:** Apply this change: "${prompt}"
+        2. **Isolate:** Precisely isolate the modified subject from the background. Remove all surrounding elements.
+        3. **Background:** Output on a pure, solid green background (#00FF00).
 
-        **Step 2: Apply User Modification**
-        Modify the character based on the user's request: "${prompt}"
+        **Segmentation & Cutline Rules (Crucial):**
+        - **Cutline:** Treat the outermost continuous contour of the subject (including any requested outline) as the cutline.
+        - **Strategy:** ${segmentationStrategy}
+        - **Edges:** Ensure clean and sharp edges without eroding the subject details. No semi-transparent pixels.
 
-        **Step 3: Apply Outline Style**
-        After modifying, ensure the character has the correct outline style as specified: "${outlineInstruction}"
+        **Outline Requirement:**
+        - "${outlineInstruction}"
 
-        **CRUCIAL FINAL OUTPUT RULES:**
-        1. The final output image MUST have the modified character on a pure, solid green background (#00FF00).
-        2. Do not add any other elements, shadows, or gradients to the background. The background must be exactly the color #00FF00.
-        3. The specified outline MUST be applied cleanly to the character.
+        **Final Check:**
+        - The result must be a single subject on #00FF00 green.
     `;
 
     try {
@@ -158,11 +170,25 @@ export const editImage = async (base64Image: string, prompt: string, originalPro
 };
 
 export const getInspirationFromImages = async (referenceImages: UploadedImage[], language: string): Promise<string[]> => {
+    const languageNameMap: Record<string, string> = {
+        'Traditional Chinese': 'Traditional Chinese (繁體中文)',
+        'Japanese': 'Japanese (日本語)',
+        'English': 'English',
+        'Korean': 'Korean (한국어)'
+    };
+    const langName = languageNameMap[language] || language;
+
     const prompt = `
         You are an exceptionally creative and imaginative sticker idea generator. Analyze the user's uploaded character images.
         Think outside the box and come up with 3 wildly creative, unique, and appealing sticker themes. Don't just describe the character; imagine them in funny, absurd, or heartwarming situations.
-        The themes should be short, catchy, and natural for speakers of ${language}.
-        For example, if you see a cat, instead of "Cute Cat Daily Life", suggest "The Cat's Secret Life as a Master Chef" or "Chronicles of a Space-Faring Feline".
+        
+        **CRITICAL REQUIREMENT:** The output themes MUST be written in **${langName}**.
+        Do NOT output English unless the requested language is English.
+        
+        For example:
+        - If the target language is Traditional Chinese (繁體中文), output Traditional Chinese (e.g., "貓咪的秘密生活").
+        - If the target language is Japanese (日本語), output Japanese (e.g., "猫の秘密の生活").
+
         Respond ONLY with a valid JSON array of 3 theme strings.
     `;
     const imageParts = referenceImages.map(img => fileToGenerativePart(img.base64));
@@ -176,7 +202,7 @@ export const getInspirationFromImages = async (referenceImages: UploadedImage[],
                 responseSchema: {
                     type: Type.ARRAY,
                     items: { type: Type.STRING },
-                    description: "An array of 3 creative sticker theme suggestions."
+                    description: `An array of 3 creative sticker theme suggestions in ${langName}.`
                 }
             }
         });

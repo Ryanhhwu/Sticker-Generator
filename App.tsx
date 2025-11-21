@@ -5,7 +5,7 @@ import { useTranslations } from './utils/translations';
 import { createEnhancedPrompt } from './utils/promptHelper';
 import * as geminiService from './services/geminiService';
 import { removeGreenScreenAndResize, cropImageToSquare } from './utils/imageProcessing';
-import { STICKER_SPECS, TEXT_LANGUAGE_OPTIONS_I18N, MAX_UPLOAD_COUNT } from './constants';
+import { STICKER_SPECS, TEXT_LANGUAGE_OPTIONS_I18N, MAX_UPLOAD_COUNT, NO_THREE_VIEW_STYLES } from './constants';
 
 import Header from './components/Header';
 import Step1CharacterStyle from './components/Step1_CharacterStyle';
@@ -377,17 +377,23 @@ function App() {
                 'a character looking forward with a gentle smile',
                 'a character in a simple, iconic pose that captures their personality'
             ];
+            
+            const threeViewPose = 'reference sheet showing the character in three views: front, side, and back';
 
             const previewPromises = selectedStyleIds.length > 1
                 // For multiple styles, generate one preview per style
                 ? selectedStyleIds.map((styleId, index) => {
-                    const pose = poses[index % poses.length];
+                    const shouldUseThreeView = !NO_THREE_VIEW_STYLES.includes(styleId) && styleId !== 'original';
+                    const pose = shouldUseThreeView ? threeViewPose : poses[index % poses.length];
                     const prompt = createEnhancedPrompt({ base: pose, memeText: '' }, [styleId], textMode, langForPrompt, characterDescription, outlineStyle, stickerType, styleStrength);
                     return geminiService.generateImage(prompt, uploadedImages);
                 })
                 // For a single style, generate strength variations
                 : strengths.map((strength, index) => {
-                    const prompt = createEnhancedPrompt({ base: poses[index % poses.length], memeText: '' }, selectedStyleIds, textMode, langForPrompt, characterDescription, outlineStyle, stickerType, strength);
+                    const styleId = selectedStyleIds[0];
+                    const shouldUseThreeView = !NO_THREE_VIEW_STYLES.includes(styleId) && styleId !== 'original';
+                    const pose = shouldUseThreeView ? threeViewPose : poses[index % poses.length];
+                    const prompt = createEnhancedPrompt({ base: pose, memeText: '' }, selectedStyleIds, textMode, langForPrompt, characterDescription, outlineStyle, stickerType, strength);
                     return geminiService.generateImage(prompt, uploadedImages);
                 });
 
@@ -430,7 +436,12 @@ function App() {
         try {
             const langOption = TEXT_LANGUAGE_OPTIONS_I18N[language].find(opt => opt.id === textLanguage);
             const langForPrompt = langOption ? langOption.prompt : 'Traditional Chinese';
-            const prompt = createEnhancedPrompt({ base: 'a neutral standing pose', memeText: '' }, selectedStyleIds, textMode, langForPrompt, characterDescription, outlineStyle, stickerType, styleStrength);
+            
+            const lastStyle = selectedStyleIds[selectedStyleIds.length - 1];
+            const shouldUseThreeView = !NO_THREE_VIEW_STYLES.includes(lastStyle) && lastStyle !== 'original';
+            const pose = shouldUseThreeView ? 'reference sheet showing the character in three views: front, side, and back' : 'a neutral standing pose';
+            
+            const prompt = createEnhancedPrompt({ base: pose, memeText: '' }, selectedStyleIds, textMode, langForPrompt, characterDescription, outlineStyle, stickerType, styleStrength);
             const image = await geminiService.generateImage(prompt, uploadedImages);
             setStylePreviewImage(image);
         } catch (err: any) {

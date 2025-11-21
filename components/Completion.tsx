@@ -26,7 +26,8 @@ const Completion: React.FC<CompletionProps> = ({ t, setCurrentView, generatedSti
         }
     };
 
-    const allStickersForMarquee = [...generatedStickers, ...generatedStickers]; // Double for seamless loop
+    // Quadruple the stickers to ensure seamless loop even with few items on wide screens
+    const allStickersForMarquee = [...generatedStickers, ...generatedStickers, ...generatedStickers, ...generatedStickers];
 
     return (
         <div className="w-full max-w-4xl p-8 sm:p-12 rounded-3xl shadow-xl border mx-auto text-center flex flex-col items-center" style={{ backgroundColor: 'var(--card-bg-color)', borderColor: 'var(--card-border-color)' }}>
@@ -42,7 +43,7 @@ const Completion: React.FC<CompletionProps> = ({ t, setCurrentView, generatedSti
             </div>
 
             <div className="w-full overflow-hidden whitespace-nowrap mb-8">
-                <div className="marquee-container">
+                <div className="marquee-container hover:pause-animation">
                     {allStickersForMarquee.map((sticker, index) => (
                         sticker.displaySrc ? (
                             <img key={`${sticker.id}-${index}`} src={sticker.displaySrc} className="h-24 w-24 object-contain rounded-lg mx-4 p-1" style={{backgroundColor: 'var(--input-bg-color)'}} />

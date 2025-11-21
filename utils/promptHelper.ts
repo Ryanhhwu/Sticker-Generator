@@ -13,85 +13,125 @@ export const createEnhancedPrompt = (
     styleStrength: number,
 ): string => {
     
-    let characterFidelityPrompt: string;
-    let styleApplicationPrompt: string;
+    let referenceInstruction: string;
+    let stylePriorityInstruction: string;
+    let structuralInstruction: string;
 
+    // Dynamic Prompting based on Strength
+    // Strength 1: Image > Style (Fix line art, change only texture/color slightly)
+    // Strength 5: Style > Image (Redesign character, change proportions/lines to fit style)
     switch (styleStrength) {
-        case 1: // Most faithful
-            characterFidelityPrompt = "**Absolute Priority: Recreate the character from the reference image with MAXIMUM fidelity. Strictly preserve every detail: face, hair, clothing, colors. The style should only be a subtle hint.**";
-            styleApplicationPrompt = "Subtly influenced by the style of";
+        case 1: // Maximum Fidelity
+            referenceInstruction = "**REFERENCE IMAGE AUTHORITY: ABSOLUTE.** You MUST strictly trace the provided character image. Do NOT change the body proportions, facial structure, or line work style. Only apply the requested style as a subtle coloring or texture filter.";
+            stylePriorityInstruction = "Style Application: Very Subtle. Keep the original drawing style dominant.";
+            structuralInstruction = "Structure: Identical to reference.";
             break;
-        case 2:
-            characterFidelityPrompt = "**High Priority: Recreate the character from the reference image with HIGH fidelity. All core features must be preserved. The style is secondary to character accuracy.**";
-            styleApplicationPrompt = "In the style of";
+        case 2: // High Fidelity
+            referenceInstruction = "**REFERENCE IMAGE AUTHORITY: HIGH.** Preserve the character's exact facial features and body shape. You may slightly adjust the shading to match the style, but the character must look exactly like the upload.";
+            stylePriorityInstruction = "Style Application: Moderate. The character should look like the original drawing processed in this style.";
+            structuralInstruction = "Structure: Preserve original proportions.";
             break;
-        case 4:
-            characterFidelityPrompt = "**Use the reference image as strong inspiration. Core features should be recognizable, but allow for significant stylistic interpretation to fit the aesthetic.**";
-            styleApplicationPrompt = "In a strong and expressive interpretation of the style of";
+        case 4: // High Stylization
+            referenceInstruction = "**REFERENCE IMAGE AUTHORITY: CONCEPT ONLY.** Use the uploaded image ONLY as a reference for the character's species, colors, and accessories. **IGNORE the original art style.**";
+            stylePriorityInstruction = "Style Application: DOMINANT. You MUST redraw the character to fit the requested artistic style perfectly. Change the line weight, shading method, and eyes to match the art style.";
+            structuralInstruction = "Structure: Adapt character proportions to the art style (e.g., if the style is Chibi, make the head big; if Realistic, make it anatomical).";
             break;
-        case 5: // Most stylized
-            characterFidelityPrompt = "**The artistic style is the TOP PRIORITY. Use the reference image only as a concept. Freely reinterpret the character to perfectly match the exaggerated and iconic features of the style.**";
-            styleApplicationPrompt = "In a dominant and exaggerated version of the style of";
+        case 5: // Maximum Stylization
+            referenceInstruction = "**REFERENCE IMAGE AUTHORITY: LOOSE.** The uploaded image is merely a color palette suggestion. **COMPLETELY RE-IMAGINE** the character in the requested style.";
+            stylePriorityInstruction = "Style Application: EXTREME. The final image MUST look 100% like the requested art style. If the style conflicts with the original image's look, the STYLE WINS. Override original lines, textures, and anatomy.";
+            structuralInstruction = "Structure: Fully transform the character's geometry to match the aesthetic (e.g., turn a photo into a flat icon, or a cartoon into a 3D render).";
             break;
-        case 3: // Balanced (default)
+        case 3: // Balanced (Default)
         default:
-            characterFidelityPrompt = "**Crucial Instruction: Recreate the character from the provided reference image with HIGH fidelity, balancing it with the chosen style. Preserve core features like face and hairstyle.**";
-            styleApplicationPrompt = "In the distinct style of";
+            referenceInstruction = "**REFERENCE IMAGE AUTHORITY: BALANCED.** Keep the character recognizable (same eyes, hair, accessories) but adapt the drawing technique (lines, coloring) to the target style.";
+            stylePriorityInstruction = "Style Application: Balanced. Merge the character's identity with the artistic technique.";
+            structuralInstruction = "Structure: Slight adaptation allowed to fit the style.";
     }
     
     let finalStylePrompt;
     if (styleIds.includes('original')) {
         finalStylePrompt = STYLE_PROMPTS['original'];
+        // Override instructions for original style
+        referenceInstruction = "**REFERENCE IMAGE AUTHORITY: ABSOLUTE.** Reproduce the character exactly as seen.";
+        stylePriorityInstruction = "No style alteration.";
     } else if (styleIds.length > 1) {
-        const combinedPrompts = styleIds.map(id => (STYLE_PROMPTS[id] || '').replace(/\*\*Crucial Fidelity Requirement.*?\*\* /g, '').replace(/\*\*.*?\*\*/g, '')).join(', and ');
-        finalStylePrompt = `${styleApplicationPrompt} a harmonious blend of the following styles: ${combinedPrompts}`;
+        const combinedPrompts = styleIds.map(id => (STYLE_PROMPTS[id] || '')).join(', and ');
+        finalStylePrompt = `A creative fusion of the following styles: ${combinedPrompts}`;
     } else {
         const styleId = styleIds[0] || 'anime';
-        const styleCorePrompt = (STYLE_PROMPTS[styleId] || '').replace(/\*\*Crucial Fidelity Requirement.*?\*\* /g, '');
-        finalStylePrompt = `${styleApplicationPrompt} ${styleCorePrompt}`;
+        finalStylePrompt = STYLE_PROMPTS[styleId] || '';
     }
     
     const characterInfo = characterDescription 
-        ? `The character is: ${characterDescription}.` 
-        : 'The character is as depicted in the reference image.';
+        ? `Character Concept: ${characterDescription}.` 
+        : 'Character Concept: As depicted in the reference image.';
     
     let textInstruction = '';
     if (textMode === 'with_text' && idea.memeText) {
-        textInstruction = `The sticker should prominently feature the text "${idea.memeText}" in ${textLanguagePrompt}. The text should be stylish, legible, and integrated with the character's pose and expression.`;
+        textInstruction = `**TEXT REQUIREMENT:** The sticker MUST include the text "${idea.memeText}" in ${textLanguagePrompt}. The text should be graphical, stylish, and integrated into the composition.`;
     }
 
     let outlineInstruction = '';
+    let segmentationInstruction = '';
+
     switch (outlineStyle) {
         case 'black':
-            outlineInstruction = 'The final image MUST have a thick, clean, black outline around the character, suitable for a sticker.';
+            outlineInstruction = 'Outline: Bold, continuous BLACK outline around the character.';
+            segmentationInstruction = '**Segmentation Strategy:** Include the outline. Keep the stroke. Ensure the complete character silhouette is distinct.';
             break;
         case 'white':
-            outlineInstruction = 'The final image MUST have a thick, clean, white outline around the character, suitable for a sticker.';
+            outlineInstruction = 'Outline: Thick, clean WHITE sticker border around the character.';
+            segmentationInstruction = '**Segmentation Strategy:** Die-cut style. Keep the border. Treat the white border as part of the subject.';
             break;
         case 'none':
-            outlineInstruction = 'The final image should NOT have any artificial sticker-like outline.';
+            outlineInstruction = 'Outline: NO artificial outline. Natural edges only.';
+            segmentationInstruction = '**Segmentation Strategy:** Pixel-perfect segmentation. Hard cut edges. Do not fade into background.';
             break;
     }
 
-    const stickerTypeInfo = `This is for a "${stickerType}" type sticker.`;
+    const stickerTypeInfo = `Format: This is a "${stickerType}" sticker.`;
+    const isThreeView = idea.base.toLowerCase().includes('three views') || idea.base.toLowerCase().includes('reference sheet');
 
-    let compositionInstruction = `The character should be the central focus with a dynamic and clear pose. The composition must be clean and simple. Ensure the character is fully visible and not cut off. **Absolute Requirement: The main character, as described and shown in references, MUST be the primary subject and clearly visible in the image. Do not generate an image without the character.**
-    **Camera Angle:** Use a dynamic and interesting camera angle to make the sticker more expressive. Consider using one of the following: dramatic low-angle shot, cute high-angle shot, dynamic dutch angle, intimate close-up on the face, full-body action shot, or a standard eye-level shot. Vary the angles across different stickers.`;
+    let compositionInstruction = `**Composition:** The character must be the sole central focus. Dynamic pose. Full visibility.`;
 
     if (stickerType === 'emoji') {
-        compositionInstruction = `This is for a small emoji. **Focus on a close-up of the character's face, capturing a clear, strong emotion. Alternatively, focus on a specific, expressive part of the character's body (like hands making a gesture). The background must be minimal to non-existent. The character's expression is the MOST IMPORTANT part.** The character must be clearly visible and not cut off.`;
+        compositionInstruction = `**Composition:** ZOOM IN CLOSE-UP. Focus primarily on the face and expression. Minimal background. High readability at small sizes.`;
+    } else if (isThreeView) {
+        compositionInstruction = `**Composition:** Character Reference Sheet. Front, Side, and Back views arranged horizontally. Neutral pose.`;
     }
 
+    // Incorporating the "Universal Core Logic" for segmentation
+    const isolationLogic = `
+    **Output Requirements:**
+    1. **Background:** PURE SOLID GREEN (#00FF00) HEX COLOR. No gradients, no shadows on background.
+    2. **Isolation:** The character must be cleanly separated from the green background.
+    3. **Cutline:** The outermost contour is the cutline.
+    `;
+
+    // Reordering prompt for better LLM attention: Style & Task first, then Reference Constraints.
     const prompt = `
-        Generate an image for a LINE sticker with a pure solid green background (#00FF00).
-        **Adherence to Reference:** ${characterFidelityPrompt}
-        **Core Idea:** A character ${idea.base}. The expression and body language MUST be extremely clear, dynamic, and exaggerated to convey the intended emotion effectively.
-        **Style:** ${finalStylePrompt}
-        **Character Details:** ${characterInfo}
-        **Text:** ${textInstruction || 'No text should be included in the image.'}
-        **Outline:** ${outlineInstruction}
-        **Composition:** ${compositionInstruction}
-        **Format:** ${stickerTypeInfo}
+        **TASK:** Generate a high-quality LINE sticker illustration.
+        
+        **TARGET STYLE:**
+        ${finalStylePrompt}
+        ${stylePriorityInstruction}
+        
+        **CHARACTER & ACTION:**
+        ${characterInfo}
+        **Action/Pose:** ${idea.base}.
+        ${!isThreeView ? 'Make the action EXAGGERATED and DYNAMIC.' : 'Neutral pose.'}
+        ${structuralInstruction}
+
+        **REFERENCE CONSTRAINTS:**
+        ${referenceInstruction}
+
+        **TECHNICAL SPECS:**
+        ${outlineInstruction}
+        ${textInstruction || 'NO TEXT in the image.'}
+        ${stickerTypeInfo}
+        ${compositionInstruction}
+        ${segmentationInstruction}
+        ${isolationLogic}
     `.replace(/\s+/g, ' ').trim();
 
     return prompt;

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -152,6 +151,7 @@
 
         @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         .marquee-container { display: flex; width: 200%; animation: scroll 60s linear infinite; }
+        .marquee-container:hover { animation-play-state: paused; }
         .marquee-item {
             flex-shrink: 0; padding: 8px 16px; margin: 0 8px;
             background-color: var(--btn-secondary-bg); color: var(--btn-secondary-text);
@@ -160,24 +160,25 @@
         html[data-theme='dark'] .marquee-item { background-color: #374151; color: #E5E7EB; }
         .marquee-item:hover { background-color: #34D399; color: white; transform: translateY(-2px); }
     </style>
+<script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "vite": "https://aistudiocdn.com/vite@^7.2.4",
+    "uuid": "https://aistudiocdn.com/uuid@^13.0.0",
+    "jszip": "https://aistudiocdn.com/jszip@^3.10.1",
+    "file-saver": "https://aistudiocdn.com/file-saver@^2.0.5"
+  }
+}
+</script>
 </head>
 <body class="antialiased">
     <div class="fixed top-0 left-0 w-full h-full aurora-bg opacity-50 z-0"></div>
     <div id="root" class="relative z-10"></div>
-
-    <script type="importmap">
-    {
-      "imports": {
-        "react": "https://aistudiocdn.com/react@^19.2.0",
-        "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-        "react/": "https://aistudiocdn.com/react@^19.2.0/",
-        "@google/genai": "https://aistudiocdn.com/@google/genai@^1.25.0",
-        "jszip": "https://aistudiocdn.com/jszip@^3.10.1",
-        "file-saver": "https://aistudiocdn.com/file-saver@^2.0.5",
-        "uuid": "https://aistudiocdn.com/uuid@^13.0.0"
-      }
-    }
-    </script>
     <script type="module" src="/index.tsx"></script>
 </body>
 </html>
