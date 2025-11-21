@@ -55,10 +55,12 @@ export const generateImage = async (prompt: string, referenceImages: UploadedIma
             throw new Error(`Image generation blocked due to safety policies. Please try a different prompt or character image.`);
         }
 
-        for (const part of response.candidates?.[0]?.content?.parts || []) {
-            if (part.inlineData) {
+        // Safely access parts and inlineData
+        const parts = response.candidates?.[0]?.content?.parts || [];
+        for (const part of parts) {
+            if (part.inlineData && part.inlineData.data) {
                 const mimeType = part.inlineData.mimeType || 'image/png';
-                const base64ImageBytes: string = part.inlineData.data;
+                const base64ImageBytes = part.inlineData.data;
                 return `data:${mimeType};base64,${base64ImageBytes}`;
             }
         }
@@ -149,10 +151,11 @@ export const editImage = async (base64Image: string, prompt: string, originalPro
             throw new Error(`Image editing blocked due to safety policies. Please try a different request.`);
         }
 
-        for (const part of response.candidates?.[0]?.content?.parts || []) {
-            if (part.inlineData) {
+        const parts = response.candidates?.[0]?.content?.parts || [];
+        for (const part of parts) {
+            if (part.inlineData && part.inlineData.data) {
                 const mimeType = part.inlineData.mimeType || 'image/png';
-                const base64ImageBytes: string = part.inlineData.data;
+                const base64ImageBytes = part.inlineData.data;
                 return `data:${mimeType};base64,${base64ImageBytes}`;
             }
         }
