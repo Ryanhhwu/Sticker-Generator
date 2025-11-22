@@ -100,7 +100,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
                                 <path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor"></path>
                             </svg>
                         </div>
-                        <h2 className="text-gray-800 dark:text-white text-lg font-bold tracking-wider font-display">STICKER GEN</h2>
+                        <h2 className="text-gray-800 dark:text-white text-lg font-bold tracking-wider font-display">
+                            STICKER <span className="text-primary">STUDIO</span>
+                        </h2>
                     </div>
                     <div className="hidden sm:flex items-center gap-8">
                         <button className="text-gray-600 dark:text-white/60 hover:text-primary transition-colors text-sm tracking-widest font-light">畫廊</button>
@@ -148,3 +150,4 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
 };
 
 export default LandingPage;
+    
