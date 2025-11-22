@@ -253,11 +253,11 @@ const Step1CharacterStyle: React.FC<Step1Props> = (props) => {
                         <div className="flex justify-between items-center mb-2">
                             <h3 className="text-lg font-semibold">{t('styleSelection')}</h3>
                             <div className="flex items-center gap-2">
-                                <label htmlFor="multi-style-toggle" className="text-sm font-medium" style={{color: 'var(--text-muted-color)'}}>{t('multiSelectStyles')}</label>
+                                <label htmlFor="multi-style-toggle" className="text-sm font-medium cursor-pointer" style={{color: 'var(--text-muted-color)'}}>{t('multiSelectStyles')}</label>
                                 <input 
                                     id="multi-style-toggle"
                                     type="checkbox" 
-                                    className="form-checkbox"
+                                    className="form-checkbox h-5 w-5 rounded border-2 border-gray-300 dark:border-white/60 bg-white dark:bg-white/10 text-primary checked:bg-primary checked:border-transparent focus:ring-primary focus:ring-offset-0 cursor-pointer transition-colors"
                                     checked={isMultiStyleMode} 
                                     onChange={handleMultiStyleToggle}
                                 />

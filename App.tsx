@@ -398,6 +398,8 @@ function App() {
             const langOption = TEXT_LANGUAGE_OPTIONS_I18N[language].find(opt => opt.id === textLanguage);
             const langForPrompt = langOption ? langOption.prompt : 'Traditional Chinese';
             
+            // Generate 3 variations using slight strength adjustments or just variances.
+            // If styleStrength is extreme (1 or 5), adjust range accordingly.
             const strengths = styleStrength === 1 
                 ? [1, 2, 3] 
                 : styleStrength === 5
@@ -407,21 +409,25 @@ function App() {
             // Strict Three-View Pose for Preview
             const threeViewPose = 'character reference sheet, three views: front, side, back, full body, standing';
             
-            const previewPromises = selectedStyleIds.length > 1
-                ? selectedStyleIds.map((styleId) => {
-                    const shouldUseThreeView = !NO_THREE_VIEW_STYLES.includes(styleId) && styleId !== 'original';
-                    const pose = shouldUseThreeView ? threeViewPose : 'a neutral standing pose, full body';
-                    const prompt = createEnhancedPrompt({ base: pose, memeText: '' }, [styleId], textMode, langForPrompt, characterDescription, outlineStyle, stickerType, styleStrength);
-                    return geminiService.generateImage(prompt, uploadedImages);
-                })
-                : strengths.map((strength) => {
-                    const styleId = selectedStyleIds[0];
-                    const shouldUseThreeView = !NO_THREE_VIEW_STYLES.includes(styleId) && styleId !== 'original';
-                    const pose = shouldUseThreeView ? threeViewPose : 'a neutral standing pose, full body';
-                    const prompt = createEnhancedPrompt({ base: pose, memeText: '' }, selectedStyleIds, textMode, langForPrompt, characterDescription, outlineStyle, stickerType, strength);
-                    return geminiService.generateImage(prompt, uploadedImages);
-                });
+            // Check if the primary style (last selected) supports three-view
+            const lastStyle = selectedStyleIds[selectedStyleIds.length - 1];
+            const shouldUseThreeView = !NO_THREE_VIEW_STYLES.includes(lastStyle) && lastStyle !== 'original';
+            const pose = shouldUseThreeView ? threeViewPose : 'a neutral standing pose, full body';
 
+            // Map over strengths to generate 3 variations of the BLENDED style
+            const previewPromises = strengths.map((strength) => {
+                const prompt = createEnhancedPrompt(
+                    { base: pose, memeText: '' }, 
+                    selectedStyleIds, // Pass ALL selected styles for blending
+                    textMode, 
+                    langForPrompt, 
+                    characterDescription, 
+                    outlineStyle, 
+                    stickerType, 
+                    strength
+                );
+                return geminiService.generateImage(prompt, uploadedImages);
+            });
 
             const results = await Promise.allSettled(previewPromises);
             const successfulImages = results

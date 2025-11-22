@@ -55,8 +55,14 @@ export const createEnhancedPrompt = (
         referenceInstruction = "**REFERENCE IMAGE AUTHORITY: ABSOLUTE.** Reproduce the character exactly as seen.";
         stylePriorityInstruction = "No style alteration.";
     } else if (styleIds.length > 1) {
-        const combinedPrompts = styleIds.map(id => (STYLE_PROMPTS[id] || '')).join(', and ');
-        finalStylePrompt = `A creative fusion of the following styles: ${combinedPrompts}`;
+        const combinedPrompts = styleIds.map(id => (STYLE_PROMPTS[id] || '')).join(' \n\n + ');
+        finalStylePrompt = `
+        **HYBRID STYLE INSTRUCTION:**
+        Create a unique FUSION of the following art styles. Seamlessly blend the key visual elements, textures, and techniques of these styles together into a cohesive look. Do not separate them.
+        
+        The styles to blend are:
+        ${combinedPrompts}
+        `;
     } else {
         const styleId = styleIds[0] || 'anime';
         finalStylePrompt = STYLE_PROMPTS[styleId] || '';
