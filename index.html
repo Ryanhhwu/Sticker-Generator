@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>STICKER STUDIO</title>
+    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+DQogIDxwYXRoIGQ9Ik0gMjUgMTUgDQogICAgICAgICAgIEwgNzUgMTUgDQogICAgICAgICAgIEMgNjUgMzUsIDg1IDY1LCA3NSA4NSANCiAgICAgICAgICAgTCAyNSA4NSANCiAgICAgICAgICAgQyAzNSA2NSwgMTUgMzUsIDI1IDE1IA0KICAgICAgICAgICBaIiANCiAgICAgICAgZmlsbD0iIzQyRTY5NSIgLz4NCjwvc3ZnPg==">
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,container-queries"></script>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
@@ -198,7 +199,7 @@
         }
         
         /* Marquee */
-        @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        @keyframes scroll { 0% { transform: translateY(0); transform: translateX(0); } 100% { transform: translateY(0); transform: translateX(-50%); } }
         .marquee-container { display: flex; width: 200%; animation: scroll 60s linear infinite; }
         .marquee-container:hover { animation-play-state: paused; }
         .marquee-item {
